@@ -1,0 +1,23 @@
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - 5910:5910
+    volumes:
+      - swayvnc-wayvnc-certs:/certs
+    environment:
+      - RENDER_GROUP_GID=992
+      - SWAY_RESOLUTION=640x480
+      - WAYVNC_PORT=5910
+      - WAYVNC_ENABLE_AUTH=true
+      - WAYVNC_USERNAME=wayvnc
+      - WAYVNC_PASSWORD=wayvnc
+    devices:
+      - /dev/dri
+    security_opt:
+      - seccomp:unconfined
+      - label:disable
+
+volumes:
+  swayvnc-wayvnc-certs:
