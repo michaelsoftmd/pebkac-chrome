@@ -1,0 +1,253 @@
+version: '3.8'
+
+networks:
+  llm-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.enable_icc: "true"
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  open-webui-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/ssd/podman/webui-data
+      o: bind
+
+  swayvnc-wayvnc-certs:
+    driver: local
+    
+  zendriver-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/ssd/podman/zendriver-data
+      o: bind
+      
+  browser-profiles:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/ssd/podman/browser-profiles
+      o: bind
+  
+  # New cache volumes
+  redis-data:
+    driver: local
+    
+  duckdb-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /mnt/ssd/podman/duckdb-data
+      o: bind
+
+services:
+  # Ollama Service
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    container_name: ollama
+    networks:
+      - llm-network
+    security_opt:
+      - no-new-privileges
+    volumes:
+      - /mnt/ssd/podman/models/ollama:/root/.ollama
+      - /mnt/ssd/podman/models/gguf:/import:ro
+    ports:
+      - "127.0.0.1:11434:11434"
+    environment:
+      - OLLAMA_NUM_GPU=0
+      - OLLAMA_MAX_LOADED_MODELS=1
+      - OLLAMA_MODELS=/root/.ollama
+    restart: unless-stopped
+    profiles: ["ollama"]
+
+  # Llama.cpp with Vulkan
+  llama-cpp-server:
+    image: llama-vulkan
+    container_name: llama-cpp-server
+    networks:
+      - llm-network
+    devices:
+      - /dev/dri:/dev/dri
+      - /dev/kfd:/dev/kfd
+    group_add:
+      - video
+      - "992"
+    security_opt:
+      - label=disable
+      - seccomp=unconfined
+    volumes:
+      - /mnt/ssd/podman/models/gguf:/models:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+      - VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+      - GGML_VULKAN_DEVICE=0
+    entrypoint: [
+      "/app/llama-server",
+      "-m", "/models/${LLAMACPP_MODEL:-$LLAMACPP_MODEL}",
+      "--host", "0.0.0.0",
+      "--port", "8080",
+      "-ngl", "${LLAMACPP_GPU_LAYERS:-18}",
+      "-t", "${LLAMACPP_THREADS:-4}",
+      "-c", "${LLAMACPP_CONTEXT:-4096}",
+      "-b", "${LLAMACPP_BATCH:-1024}",
+      "-ub", "${LLAMACPP_UBATCH:-512}",
+#      "--n-cpu-moe", havent got this one yet, nbd
+      "--flash-attn",
+      "--mlock",
+      "-sm", "layer",
+      "--jinja",
+      "-np", "${LLAMACPP_PARALLEL:-1}",
+      "--metrics"
+    ]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles: ["llamacpp", "full"]
+
+  # Open WebUI
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    networks:
+      - llm-network
+    security_opt:
+      - no-new-privileges
+    ports:
+      - "127.0.0.1:3000:8080"
+    volumes:
+      - open-webui-data:/app/backend/data
+    environment:
+      - ENABLE_OLLAMA_API=${ENABLE_OLLAMA:-false}
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OPENAI_API_BASE_URL=${ACTIVE_OPENAI_URL:-http://llama-cpp-server:8080/v1}
+      - WEBUI_AUTH=false
+      - ENABLE_RAG_WEB_SEARCH=true
+      - ENABLE_IMAGE_GENERATION=false
+      - WEBUI_URL=http://localhost:3000
+    restart: always
+    profiles: ["webui", "llamacpp", "llamafile", "ollama", "full"]
+
+  # Zendriver Browser Automation
+  zendriver:
+    build:
+      context: ./zendriver-docker
+    container_name: zendriver
+    networks:
+      - llm-network
+    ports:
+      - "127.0.0.1:8090:8080"
+      - "127.0.0.1:5910:5910"
+      - "127.0.0.1:6080:6080"
+    volumes:
+      - swayvnc-wayvnc-certs:/certs
+      - zendriver-data:/app/data
+      - browser-profiles:/app/profiles
+      - /mnt/ssd/podman/shared:/shared:U
+      - /mnt/ssd/podman/exports:/app/data/exports
+    environment:
+      - RENDER_GROUP_GID=992
+      - SWAY_RESOLUTION=640x480
+      - WAYVNC_PORT=5910
+      - WAYVNC_ENABLE_AUTH=false
+      - MESA_LOADER_DRIVER_OVERRIDE=radeonsi
+      - LIBVA_DRIVER_NAME=radeonsi
+      - VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
+    devices: 
+      - /dev/dri
+      - /dev/kfd
+    security_opt:
+      - seccomp:unconfined
+      - label:disable
+    group_add:
+      - video
+      - "992"
+    restart: unless-stopped
+    profiles: ["zendriver", "webui", "llamacpp", "openhands", "full"]
+
+  # Redis Cache Service (L1 Cache)
+  redis-cache:
+    image: docker.io/redis:6.2
+    container_name: redis-cache
+    networks:
+      - llm-network
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+    command: [
+      "redis-server",
+      "--maxmemory", "512mb",
+      "--maxmemory-policy", "allkeys-lru",
+      "--save", "60", "1000",
+      "--appendonly", "yes",
+      "--appendfsync", "everysec"
+    ]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    profiles: ["zendriver", "webui", "full"]
+
+  # DuckDB Cache Service (L2 Cache)
+  duckdb-cache:
+    build:
+      context: ./duckdb-service
+      dockerfile: Dockerfile
+    container_name: duckdb-cache
+    networks:
+      - llm-network
+    ports:
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - duckdb-data:/data
+      - /mnt/ssd/podman/cache:/cache
+    environment:
+      - DUCKDB_DATABASE=/data/cache.db
+      - DUCKDB_MEMORY_LIMIT=1GB
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    profiles: ["zendriver", "webui", "full"]
+
+  # OpenAPI Tool Server
+  openapi-tools:
+    build: 
+      context: ./openapi-server
+      dockerfile: Dockerfile
+    container_name: openapi-tools
+    networks:
+      - llm-network
+    ports:
+      - "127.0.0.1:9000:9000"
+    environment:
+      - ZENDRIVER_API_URL=http://zendriver:8080
+      - REDIS_URL=redis://redis-cache:6379
+      - DUCKDB_URL=http://duckdb-cache:9001
+      - HF_TOKEN=${HF_TOKEN}
+      - SMOLAGENTS_USE_CODE_AGENT=${SMOLAGENTS_USE_CODE_AGENT:-true}
+      - SMOLAGENTS_MAX_STEPS=${SMOLAGENTS_MAX_STEPS:-10}
+      - USE_CACHE=true
+    env_file:
+      - .env
+    depends_on:
+      - zendriver
+      - redis-cache
+      - duckdb-cache
+    restart: unless-stopped
+    profiles: ["zendriver", "webui", "full"]
