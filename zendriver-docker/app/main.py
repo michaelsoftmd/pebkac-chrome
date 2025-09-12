@@ -13,7 +13,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from zendriver import cdp
 import base64
-
+import re
 
 # Import refactored modules
 from urllib.parse import urlparse
@@ -340,6 +340,62 @@ async def click_element(
 # ===========================
 # Cloudflare Handling
 # ===========================
+
+async def _get_challenge_indicators(tab):
+    """Unified challenge detection logic for both Cloudflare and reCAPTCHA"""
+    return await safe_evaluate(tab, """
+        (() => {
+            const indicators = {
+                // Cloudflare indicators
+                hasCfRay: !!document.querySelector('meta[name="cf-ray"]'),
+                hasChallengeForm: !!document.querySelector('form#challenge-form, form[action*="cdn-cgi"]'),
+                titleHasCloudflare: /cloudflare|checking|just a moment|checking your browser/i.test(document.title || ''),
+                hasCfScript: Array.from(document.scripts || []).some(s => 
+                    s.src && s.src.includes('cloudflare')),
+                bodyTextCloudflare: /checking your browser|just a moment|please wait|ddos protection by cloudflare|ray id/i.test(document.body?.innerText || ''),
+                
+                // reCAPTCHA indicators
+                hasRecaptchaIframe: document.querySelectorAll('iframe[src*="recaptcha"], iframe[src*="google.com/recaptcha"], iframe[title="reCAPTCHA"]').length > 0,
+                hasRecaptchaElement: document.querySelectorAll('.g-recaptcha, .recaptcha, [class*="recaptcha"], [data-sitekey]').length > 0,
+                hasRecaptchaScript: Array.from(document.scripts || []).some(s => 
+                    s.src && (s.src.includes('recaptcha') || s.src.includes('google.com/recaptcha'))),
+                titleHasRecaptcha: /recaptcha|not a robot|verify you are human/i.test(document.title || ''),
+                bodyTextRecaptcha: /i'm not a robot|recaptcha|please verify|verify you are not a robot/i.test(document.body?.innerText || '')
+            };
+            return indicators;
+        })()
+    """)
+
+async def _determine_challenge_type(indicators):
+    """Determine challenge type from unified indicators"""
+    if not indicators or not isinstance(indicators, dict):
+        return "none", False, False
+        
+    is_cloudflare = any([
+        indicators.get('titleHasCloudflare', False),
+        indicators.get('hasChallengeForm', False),
+        indicators.get('hasCfScript', False),
+        indicators.get('bodyTextCloudflare', False)
+    ])
+    
+    is_recaptcha = any([
+        indicators.get('hasRecaptchaIframe', False),
+        indicators.get('hasRecaptchaElement', False),
+        indicators.get('hasRecaptchaScript', False),
+        indicators.get('titleHasRecaptcha', False),
+        indicators.get('bodyTextRecaptcha', False)
+    ])
+    
+    if is_cloudflare and is_recaptcha:
+        challenge_type = "mixed"
+    elif is_cloudflare:
+        challenge_type = "cloudflare"
+    elif is_recaptcha:
+        challenge_type = "recaptcha"
+    else:
+        challenge_type = "none"
+    
+    return challenge_type, is_cloudflare, is_recaptcha
 @app.get("/cloudflare/detect")
 async def detect_cloudflare(
     browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)]
@@ -348,151 +404,124 @@ async def detect_cloudflare(
     tab = await browser_manager.get_tab()
     
     try:
-        # Use safe_evaluate for consistent returns
         from app.utils.browser_utils import safe_evaluate
         
-        # Check for both Cloudflare and reCAPTCHA patterns
-        challenge_patterns = [
-            # Cloudflare patterns
-            "Checking your browser",
-            "Just a moment",
-            "Please wait",
-            "DDoS protection by Cloudflare",
-            "Ray ID:",
-            "Cloudflare Ray ID",
-            "cf-browser-verification",
-            # reCAPTCHA patterns
-            "I'm not a robot",
-            "reCAPTCHA",
-            "recaptcha",
-            "Please verify you are human",
-            "Verify you are not a robot"
-        ]
+        # Use unified challenge detection
+        indicators = await _get_challenge_indicators(tab)
+        challenge_type, is_cloudflare, is_recaptcha = await _determine_challenge_type(indicators)
         
-        # Get page content more reliably
-        page_text = await safe_evaluate(tab, """
-            (() => {
-                const title = document.title || '';
-                const body = document.body ? document.body.innerText : '';
-                return title + ' ' + body;
-            })()
-        """)
-        
-        # Ensure we have a string
-        page_text = str(page_text) if page_text else ""
-        
-        # Quick pattern check for any challenge type
-        has_challenge_pattern = any(pattern.lower() in page_text.lower() 
-                                   for pattern in challenge_patterns)
-        
-        if has_challenge_pattern:
-            # Check for both Cloudflare and reCAPTCHA challenges
+        # Additional check for Cloudflare interactive challenges
+        if is_cloudflare:
             from app.core.cloudflare import cf_is_interactive_challenge_present
-            has_cf_challenge = await cf_is_interactive_challenge_present(tab, timeout=TIMEOUTS.element_find)
+            has_cf_interactive = await cf_is_interactive_challenge_present(tab, timeout=TIMEOUTS.element_find)
+            if has_cf_interactive:
+                challenge_type = "cloudflare_interactive"
+        else:
+            has_cf_interactive = False
             
-            # Check for reCAPTCHA elements
-            has_recaptcha = await safe_evaluate(tab, """
-                (() => {
-                    // Look for reCAPTCHA iframes and elements
-                    const recaptchaIframes = document.querySelectorAll('iframe[src*="recaptcha"], iframe[src*="google.com/recaptcha"]');
-                    const recaptchaElements = document.querySelectorAll('.g-recaptcha, .recaptcha, [class*="recaptcha"]');
-                    const recaptchaScripts = Array.from(document.scripts).some(s => 
-                        s.src && (s.src.includes('recaptcha') || s.src.includes('google.com/recaptcha')));
-                    
-                    return {
-                        hasRecaptchaIframe: recaptchaIframes.length > 0,
-                        hasRecaptchaElement: recaptchaElements.length > 0,
-                        hasRecaptchaScript: recaptchaScripts,
-                        recaptchaCount: recaptchaIframes.length + recaptchaElements.length
-                    };
-                })()
-            """)
-            
-            # Handle safe_evaluate returning None
-            if not has_recaptcha or not isinstance(has_recaptcha, dict):
-                has_recaptcha = {"hasRecaptchaIframe": False, "hasRecaptchaElement": False, "hasRecaptchaScript": False}
-            
-            is_recaptcha = any([
-                has_recaptcha.get("hasRecaptchaIframe", False),
-                has_recaptcha.get("hasRecaptchaElement", False), 
-                has_recaptcha.get("hasRecaptchaScript", False)
-            ])
-            
-            # Determine challenge type
-            challenge_type = "unknown"
-            if has_cf_challenge:
-                challenge_type = "cloudflare"
-            elif is_recaptcha:
-                challenge_type = "recaptcha"
-            elif any(pattern.lower() in page_text.lower() for pattern in challenge_patterns[:7]):  # Cloudflare patterns
-                challenge_type = "cloudflare_detected"
-            elif any(pattern.lower() in page_text.lower() for pattern in challenge_patterns[7:]):  # reCAPTCHA patterns
-                challenge_type = "recaptcha_detected"
-            
-            return {
-                "status": "challenge_detected",
-                "has_cloudflare": has_cf_challenge or "cloudflare" in challenge_type,
-                "has_recaptcha": is_recaptcha,
-                "has_challenge": has_cf_challenge or is_recaptcha,
-                "challenge_type": challenge_type,
-                "indicators": {
-                    "pattern_match": True,
-                    "recaptcha_details": has_recaptcha
-                }
-            }
-        
-        # Check for additional indicators if no pattern match
-        all_indicators = await safe_evaluate(tab, """
-            (() => {
-                const indicators = {
-                    // Cloudflare indicators
-                    hasCfRay: !!document.querySelector('meta[name="cf-ray"]'),
-                    hasChallengeForm: !!document.querySelector('form#challenge-form'),
-                    titleHasCloudflare: /cloudflare|checking|just a moment/i.test(document.title || ''),
-                    hasCfScript: Array.from(document.scripts || []).some(s => 
-                        s.src && s.src.includes('cloudflare')),
-                    
-                    // reCAPTCHA indicators
-                    hasRecaptchaIframe: document.querySelectorAll('iframe[src*="recaptcha"], iframe[src*="google.com/recaptcha"]').length > 0,
-                    hasRecaptchaElement: document.querySelectorAll('.g-recaptcha, .recaptcha, [class*="recaptcha"]').length > 0,
-                    hasRecaptchaScript: Array.from(document.scripts || []).some(s => 
-                        s.src && (s.src.includes('recaptcha') || s.src.includes('google.com/recaptcha'))),
-                    titleHasRecaptcha: /recaptcha|not a robot/i.test(document.title || '')
-                };
-                return indicators;
-            })()
-        """)
-        
-        # Handle case where safe_evaluate returns None
-        if not all_indicators or not isinstance(all_indicators, dict):
-            logger.warning("Failed to get challenge indicators")
-            all_indicators = {}
-        
-        is_cloudflare_page = any([
-            all_indicators.get('titleHasCloudflare', False),
-            all_indicators.get('hasChallengeForm', False),
-            all_indicators.get('hasCfScript', False)
-        ])
-        
-        is_recaptcha_page = any([
-            all_indicators.get('hasRecaptchaIframe', False),
-            all_indicators.get('hasRecaptchaElement', False),
-            all_indicators.get('hasRecaptchaScript', False),
-            all_indicators.get('titleHasRecaptcha', False)
-        ])
-        
         return {
-            "status": "success",
-            "has_cloudflare": is_cloudflare_page,
-            "has_recaptcha": is_recaptcha_page,
-            "has_challenge": is_cloudflare_page or is_recaptcha_page,
-            "challenge_type": "cloudflare" if is_cloudflare_page else ("recaptcha" if is_recaptcha_page else "none"),
-            "indicators": all_indicators
+            "status": "challenge_detected" if (is_cloudflare or is_recaptcha) else "no_challenge",
+            "has_cloudflare": is_cloudflare,
+            "has_recaptcha": is_recaptcha,
+            "has_challenge": has_cf_interactive or is_recaptcha,
+            "challenge_type": challenge_type,
+            "indicators": indicators or {}
         }
         
     except Exception as e:
         logger.error(f"Cloudflare detection error: {e}")
         return {"status": "error", "error": str(e)}
+
+async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
+    """
+    Find and click reCAPTCHA checkbox using coordinate-based clicking.
+    Returns (success: bool, message: str)
+    """
+    try:
+        logger.debug("Looking for reCAPTCHA checkbox...")
+        
+        # Find the reCAPTCHA anchor iframe
+        iframe_selectors = [
+            'iframe[src*="google.com/recaptcha/api2/anchor"]',
+            'iframe[src*="google.com/recaptcha/enterprise/anchor"]',
+            'iframe[title="reCAPTCHA"]',
+            'iframe[name^="a-"][src*="recaptcha"]'
+        ]
+        
+        anchor_frame = None
+        for selector in iframe_selectors:
+            try:
+                anchor_frame = await tab.find(selector, timeout=3)
+                if anchor_frame:
+                    logger.info(f"Found reCAPTCHA iframe with selector: {selector}")
+                    break
+            except:
+                continue
+        
+        if not anchor_frame:
+            return False, "No reCAPTCHA iframe found"
+        
+        # Get the iframe's position for clicking
+        try:
+            # Get bounding box using JavaScript
+            from app.utils.browser_utils import safe_evaluate
+            frame_rect = await safe_evaluate(tab, f"""
+                (() => {{
+                    const iframe = document.querySelector('{iframe_selectors[0]}');
+                    if (!iframe) return null;
+                    const rect = iframe.getBoundingClientRect();
+                    return {{
+                        left: rect.left,
+                        top: rect.top,
+                        width: rect.width,
+                        height: rect.height
+                    }};
+                }})()
+            """)
+            
+            if not frame_rect:
+                return False, "Could not get iframe position"
+            
+            # Click coordinates - checkbox is typically at these offsets within the iframe
+            click_x = frame_rect['left'] + 30  # Checkbox is ~30px from left
+            click_y = frame_rect['top'] + (frame_rect['height'] / 2)  # Vertically centered
+            
+            logger.info(f"Clicking reCAPTCHA at coordinates: ({click_x}, {click_y})")
+            
+            # Click the checkbox using coordinates
+            await tab.mouse_click(click_x, click_y)
+            
+            # Wait for click to register
+            await asyncio.sleep(2)
+            
+            # Check if we passed (look for token)
+            token_check = await safe_evaluate(tab, """
+                (() => {
+                    const response = document.querySelector('[name="g-recaptcha-response"]');
+                    return response && response.value ? 'passed' : 'unknown';
+                })()
+            """)
+            
+            if token_check == 'passed':
+                return True, "reCAPTCHA checkbox clicked - passed without challenge"
+            
+            # Check if challenge iframe appeared 
+            try:
+                challenge_frame = await tab.find('iframe[src*="bframe"]', timeout=2)
+                if challenge_frame:
+                    return True, "reCAPTCHA checkbox clicked - challenge appeared (requires manual solving)"
+            except:
+                pass
+            
+            return True, "reCAPTCHA checkbox clicked"
+            
+        except Exception as e:
+            logger.error(f"Error clicking reCAPTCHA: {e}")
+            return False, f"Click error: {str(e)}"
+            
+    except Exception as e:
+        logger.error(f"Failed to solve reCAPTCHA: {e}")
+        return False, f"Error: {str(e)}"
 
 @app.post("/cloudflare/solve")
 async def solve_cloudflare_challenge(
@@ -504,18 +533,42 @@ async def solve_cloudflare_challenge(
     tab = await browser_manager.get_tab()
     
     try:
-        from app.core.cloudflare import verify_cf
+        from app.utils.browser_utils import safe_evaluate
         
-        # Try to solve the challenge
-        await verify_cf(
-            tab,
-            click_delay=click_delay,
-            timeout=timeout
-        )
+        # Use unified challenge detection
+        indicators = await _get_challenge_indicators(tab)
+        challenge_type, is_cloudflare_page, is_recaptcha_page = await _determine_challenge_type(indicators)
         
+        # Solve Cloudflare challenge
+        if is_cloudflare_page:
+            from app.core.cloudflare import verify_cf
+            await verify_cf(tab, click_delay=click_delay, timeout=timeout)
+            return {
+                "status": "success",
+                "message": "Cloudflare challenge solved",
+                "type": "cloudflare"
+            }
+        
+        # Solve reCAPTCHA challenge
+        if is_recaptcha_page:
+            success, message = await _solve_recaptcha_checkbox(tab, timeout)
+            if success:
+                return {
+                    "status": "success",
+                    "message": message,
+                    "type": "recaptcha"
+                }
+            else:
+                return {
+                    "status": "error",
+                    "error": message,
+                    "type": "recaptcha"
+                }
+        
+        # No challenge found
         return {
-            "status": "success",
-            "message": "Cloudflare challenge solved"
+            "status": "no_challenge",
+            "message": "No Cloudflare or reCAPTCHA challenge found"
         }
         
     except TimeoutError as e:
@@ -1081,55 +1134,78 @@ async def list_network_requests(
 # ===========================
 # Export Operations
 # ===========================
-@app.post("/export/pdf")
-async def export_to_pdf(
+@app.post("/export/page_markdown")
+async def export_page_as_markdown(
     browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
     settings: Annotated[Settings, Depends(get_settings)],
-    filename: Optional[str] = Body("page.pdf", description="PDF filename"),
-    return_base64: bool = Body(True, description="Return PDF as base64"),
-    full_page: bool = Body(True, description="Capture full page")
+    include_metadata: bool = Body(True, description="Include page metadata"),
+    use_trafilatura: bool = Body(True, description="Use Trafilatura for better extraction")
 ):
+    """Export current page content as markdown"""
     tab = await browser_manager.get_tab()
     
-    try:
-        os.makedirs(settings.exports_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = filename.replace('.pdf', '')
-        pdf_filename = f"{timestamp}_{base_name}.pdf"
-        exports_dir = getattr(settings, 'exports_dir', '/app/data/exports')
-        os.makedirs(exports_dir, exist_ok=True)
-        pdf_path = os.path.join(exports_dir, pdf_filename)
-
-        await tab.print_to_pdf(pdf_path)
-
-        response = {
-            "status": "success",
-            "filename": pdf_filename,
-            "container_path": str(pdf_path),
-            "relative_path": f"exports/{pdf_filename}",
-            "size_bytes": os.path.getsize(pdf_path) if os.path.exists(pdf_path) else 0,
-            "timestamp": timestamp
-        }
-        
-        if return_base64:
-            with open(pdf_path, "rb") as f:
-                pdf_data = f.read()
-            response["base64"] = base64.b64encode(pdf_data).decode('utf-8')
-            response["mime_type"] = "application/pdf"
-        
-        return response
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    except Exception as e:
-        logger.error(f"PDF export error: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "error": "pdf_export_failed",
-               "message": str(e)
-           }
-        )
-    finally:
-        await browser_manager.release_tab(tab)
+    # Get page URL and title
+    current_url = await safe_evaluate(tab, "window.location.href")
+    page_title = await safe_evaluate(tab, "document.title")
+    
+    # Extract content
+    if use_trafilatura:
+        # Use Trafilatura for high-quality extraction
+        from app.services.extraction import UnifiedExtractionService
+        extraction_service = UnifiedExtractionService(browser_manager, None)
+        result = await extraction_service.extract_with_trafilatura(tab)
+        
+        if result and result.get("status") == "success":
+            content = result["content"]["main_text"]
+            metadata = result["metadata"]
+        else:
+            # Fallback to basic extraction
+            content = await safe_evaluate(tab, "document.body.innerText")
+            metadata = {"title": page_title, "url": current_url}
+    else:
+        # Basic extraction
+        content = await safe_evaluate(tab, "document.body.innerText")
+        metadata = {"title": page_title, "url": current_url}
+    
+    # Build markdown
+    md_content = f"# {metadata.get('title', 'Untitled')}\n\n"
+    
+    if include_metadata:
+        md_content += f"**URL:** {metadata.get('url', current_url)}\n"
+        md_content += f"**Exported:** {datetime.now().isoformat()}\n"
+        if metadata.get('author'):
+            md_content += f"**Author:** {metadata['author']}\n"
+        if metadata.get('date'):
+            md_content += f"**Date:** {metadata['date']}\n"
+        if metadata.get('description'):
+            md_content += f"**Description:** {metadata['description']}\n"
+        md_content += "\n---\n\n"
+    
+    # Add main content
+    md_content += content if content else "No content extracted"
+    
+    # Save file
+    exports_dir = settings.exports_dir
+    os.makedirs(exports_dir, exist_ok=True)
+    
+    # Clean filename from title
+    safe_title = re.sub(r'[^\w\s-]', '', page_title or 'page')[:50]
+    filename = f"{timestamp}_{safe_title}.md"
+    filepath = os.path.join(exports_dir, filename)
+    
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(md_content)
+    
+    return {
+        "status": "success",
+        "filename": filename,
+        "path": filepath,
+        "size_bytes": len(md_content.encode('utf-8')),
+        "url": current_url,
+        "title": page_title
+    }
 
 @app.post("/screenshot")
 async def take_screenshot(

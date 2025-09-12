@@ -4,6 +4,7 @@ services:
       context: .
     ports:
       - 5910:5910
+      - 6080:6080
     volumes:
       - swayvnc-wayvnc-certs:/certs
     environment:

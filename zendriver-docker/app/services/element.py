@@ -13,7 +13,7 @@ class ElementService:
         self.browser_manager = browser_manager
     
     async def find_element(self, selector: Optional[str] = None, text: Optional[str] = None, 
-                          timeout: int = 300):
+                          timeout: int = TIMEOUTS.element_find):
         """Find element with comprehensive error handling"""
         tab = await self.browser_manager.get_tab()
         
@@ -151,7 +151,7 @@ class ElementService:
     
     async def element_exists(self, selector: Optional[str] = None,
                             text: Optional[str] = None,
-                            timeout: int = 150) -> bool:
+                            timeout: int = TIMEOUTS.element_find) -> bool:
         """Check if an element exists on the page"""
         tab = await self.browser_manager.get_tab()
         

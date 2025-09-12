@@ -43,11 +43,14 @@ class SafeCodeAgent(CodeAgent):
         self._in_recovery = False
         self.error_buffer = []  # Store errors instead of returning them immediately
         self.suppress_intermediate_errors = True  # Control error suppression
+        self.max_recovery_attempts = 3  # Prevent infinite recovery loops
+        self.recovery_attempts = 0
     
     def run(self, task: str, **kwargs) -> Any:
         """Enhanced run that ensures final_answer is always provided."""
         self.original_task = task
         self.error_buffer = []  # Clear error buffer for new run
+        self.recovery_attempts = 0  # Reset recovery counter
         
         try:
             # First attempt with standard execution
@@ -56,6 +59,9 @@ class SafeCodeAgent(CodeAgent):
             # Check if we got a final answer
             if not self._has_final_answer(result):
                 result = self._ensure_final_answer(result)
+            
+            # Reset suppression flag on successful completion
+            self.suppress_intermediate_errors = True
             
             return result
             
@@ -96,6 +102,14 @@ class SafeCodeAgent(CodeAgent):
     
     def _recover_execution(self, task: str, partial_result: Any) -> Any:
         """Attempt to recover from incomplete execution."""
+        # Check if we've exceeded max recovery attempts
+        if self.recovery_attempts >= self.max_recovery_attempts:
+            logger.warning(f"Max recovery attempts ({self.max_recovery_attempts}) reached")
+            return partial_result
+        
+        self.recovery_attempts += 1
+        logger.info(f"Recovery attempt {self.recovery_attempts}/{self.max_recovery_attempts}")
+        
         modified_task = f"""
         {task}
         
@@ -178,15 +192,25 @@ class SafeCodeAgent(CodeAgent):
                 'timestamp': time.time()
             })
             
+            # Limit error buffer size to prevent memory issues
+            if len(self.error_buffer) > 50:
+                self.error_buffer = self.error_buffer[-50:]
+            
             logger.error(f"Buffered error: {error_msg}")
             
-            # Return a placeholder instead of raising
+            # Return a placeholder instead of raising and TRACK IT
             if "timeout" in error_msg.lower():
-                return "Operation timed out, continuing with available data..."
+                placeholder = {"type": "timeout", "message": "Operation timed out", "partial": True, "details": error_msg[:100]}
+                self.partial_results.append(placeholder)
+                return placeholder
             elif "not found" in error_msg.lower():
-                return "Element not found, skipping..."
+                placeholder = {"type": "not_found", "message": "Element not found", "partial": True, "details": error_msg[:100]}
+                self.partial_results.append(placeholder)
+                return placeholder
             else:
-                return f"Error occurred: {error_msg[:50]}... (continuing)"
+                placeholder = {"type": "error", "message": f"Error occurred: {error_msg[:50]}", "partial": True, "details": error_msg[:100]}
+                self.partial_results.append(placeholder)
+                return placeholder
                 
         finally:
             # Restore stdout/stderr
@@ -232,8 +256,7 @@ class SafeCodeAgent(CodeAgent):
         # Check for patterns that indicate a final answer was provided
         return any([
             "final_answer" in result_str.lower(),
-            isinstance(result, dict) and 'final_answer' in result,
-            len(result_str) > 100  # Substantial response
+            isinstance(result, dict) and 'final_answer' in result
         ])
     
     def _ensure_final_answer(self, partial_result: Any) -> str:
@@ -245,7 +268,10 @@ class SafeCodeAgent(CodeAgent):
         if self.partial_results:
             response_parts.append("Completed operations:")
             for i, result in enumerate(self.partial_results[-3:], 1):  # Last 3 results
-                if result and str(result).strip():
+                if isinstance(result, dict) and result.get('partial'):
+                    # It's a placeholder/error result
+                    response_parts.append(f"{i}. {result.get('message', 'Unknown operation')}")
+                elif result and str(result).strip():
                     response_parts.append(f"{i}. {str(result)[:150]}")
         
         # Add error summary if any
@@ -293,6 +319,8 @@ class SafeCodeAgent(CodeAgent):
         self.last_code = None
         self._in_recovery = False
         self.error_buffer = []
+        self.recovery_attempts = 0
+        self.suppress_intermediate_errors = True  # Reset to default state
 
 # Configuration from environment
 ACTIVE_OPENAI_URL = os.getenv("ACTIVE_OPENAI_URL", "http://llama-cpp-server:8080/v1")
@@ -386,13 +414,13 @@ class GetCurrentURLTool(Tool):
             return f"Error: {str(e)}"
 
 class CloudflareBypassTool(Tool):
-    """Tool to detect and bypass Cloudflare challenges"""
+    """Tool to detect and bypass Cloudflare or reCAPTCHA challenges"""
     name = "cloudflare_bypass"
-    description = "Detect and solve Cloudflare challenges on the current page. Use this if you encounter 'Checking your browser', 'Just a moment', or similar Cloudflare messages."
+    description = "Detect and solve Cloudflare or reCAPTCHA challenges on the current page. Use this if you encounter 'Checking your browser', 'Just a moment', Cloudflare messages, or reCAPTCHA checkboxes ('I'm not a robot')."
     inputs = {
         "action": {
             "type": "string",
-            "description": "Action to perform: 'detect' to check for Cloudflare, 'solve' to solve challenge, or 'auto' to detect and solve if needed",
+            "description": "Action to perform: 'detect' to check for challenges, 'solve' to solve challenges, or 'auto' to detect and solve if needed",
             "default": "auto",
             "nullable": True
         },
@@ -460,6 +488,9 @@ class CloudflareBypassTool(Tool):
                 solve_data = solve_response.json()
                 
                 if solve_data.get("status") == "success":
+                    challenge_type = solve_data.get("type", "unknown")
+                    message = solve_data.get("message", "")
+                    
                     # Wait for page to stabilize after solving
                     time.sleep(wait_after)
                     
@@ -468,18 +499,30 @@ class CloudflareBypassTool(Tool):
                     if verify_response.status_code == 200:
                         verify_data = verify_response.json()
                         if not verify_data.get("has_challenge"):
-                            return "Successfully bypassed Cloudflare challenge! Page is now accessible."
+                            if challenge_type == "cloudflare":
+                                return "Successfully bypassed Cloudflare challenge! Page is now accessible."
+                            elif challenge_type == "recaptcha":
+                                return f"Successfully clicked reCAPTCHA checkbox! {message}"
+                            else:
+                                return "Challenge solved successfully! Page is now accessible."
                         else:
-                            return "Cloudflare challenge was clicked but may still be active. Try again or wait longer."
+                            if challenge_type == "recaptcha":
+                                return f"reCAPTCHA checkbox clicked: {message}"
+                            else:
+                                return "Challenge was processed but may still be active. Try again or wait longer."
                     
-                    return "Cloudflare challenge solving completed. Page should be accessible."
+                    return f"Challenge solving completed ({challenge_type}). Page should be accessible."
                     
                 elif solve_data.get("status") == "timeout":
-                    return f"Timeout while solving Cloudflare challenge. The challenge may be too complex or require manual intervention."
+                    return f"Timeout while solving challenge. The challenge may be too complex or require manual intervention."
+                elif solve_data.get("status") == "no_challenge":
+                    return "No challenge found to solve."
                 else:
-                    return f"Failed to solve Cloudflare challenge: {solve_data.get('error', 'Unknown error')}"
+                    error_msg = solve_data.get('error', solve_data.get('message', 'Unknown error'))
+                    challenge_type = solve_data.get('type', 'challenge')
+                    return f"Failed to solve {challenge_type}: {error_msg}"
             
-            return "Cloudflare detected but no active challenge to solve."
+            return "Challenge detected but no active challenge to solve."
             
         except Exception as e:
             logger.error(f"Cloudflare bypass error: {e}")
@@ -1002,6 +1045,44 @@ class VisitWebpageTool(Tool):
         except Exception as e:
             logger.error(f"Visit webpage error: {e}")
             return f"Failed to visit {url}: {str(e)}"
+
+class ExportPageMarkdownTool(Tool):
+    name = "export_page_markdown"
+    description = "Export the current browser page content as a markdown file"
+    inputs = {
+        "include_metadata": {
+            "type": "boolean",
+            "description": "Include page metadata like author, date",
+            "default": True,
+            "nullable": True
+        }
+    }
+    output_type = "string"
+    
+    def __init__(self, api_url: str):
+        super().__init__()
+        self.api_url = api_url
+        self.client = httpx.Client(timeout=TIMEOUTS.http_request)
+    
+    def forward(self, include_metadata: bool = True) -> str:
+        """Export current page as markdown"""
+        try:
+            response = self.client.post(
+                f"{self.api_url}/export/page_markdown",
+                json={"include_metadata": include_metadata, "use_trafilatura": True}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return f"Page exported successfully: {data['filename']} ({data['size_bytes']} bytes) - Title: {data.get('title', 'Unknown')}"
+            else:
+                error_text = response.text
+                logger.error(f"Export failed with status {response.status_code}: {error_text}")
+                return f"Export failed: {error_text}"
+                
+        except Exception as e:
+            logger.error(f"Export error: {e}")
+            return f"Export failed: {str(e)}"
             
 class ScreenshotTool(Tool):
     name = "take_screenshot"
@@ -1214,6 +1295,7 @@ async def run_agent(request: AgentRequest):
             KeyboardNavigationTool(ZENDRIVER_API_URL),
             WebSearchTool(ZENDRIVER_API_URL),
             SearchHistoryTool(DUCKDB_URL),
+            ExportPageMarkdownTool(ZENDRIVER_API_URL),
             ScreenshotTool(ZENDRIVER_API_URL),
             GetElementPositionTool(ZENDRIVER_API_URL),
             InterceptNetworkTool(ZENDRIVER_API_URL),

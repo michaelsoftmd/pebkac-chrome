@@ -1,12 +1,13 @@
 from pydantic import BaseModel, Field, field_validator, HttpUrl
 from typing import Optional, List, Dict, Any
 import re
+from app.core.timeouts import TIMEOUTS
 
 class NavigationRequest(BaseModel):
     """Navigation request with validation"""
     url: HttpUrl | str
     wait_for: Optional[str] = Field(None, max_length=500)
-    wait_timeout: int = Field(300, ge=1, le=350)
+    wait_timeout: int = Field(TIMEOUTS.element_find, ge=1, le=350)
     
     @field_validator('url')
     @classmethod
