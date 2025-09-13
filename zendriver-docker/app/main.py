@@ -1186,8 +1186,8 @@ async def export_page_as_markdown(
     # Add main content
     md_content += content if content else "No content extracted"
     
-    # Save file
-    exports_dir = settings.exports_dir
+    # Save file to tmp directory (same pattern as screenshots)
+    exports_dir = '/app/tmp/exports'
     os.makedirs(exports_dir, exist_ok=True)
     
     # Clean filename from title
@@ -1218,8 +1218,8 @@ async def take_screenshot(
     tab = await browser_manager.get_tab()
     
     try:
-        # Simple screenshot directory - use /tmp/screenshots
-        screenshot_dir = '/tmp/screenshots'
+        # Screenshot directory - use /app/tmp/screenshots (mounted to host)
+        screenshot_dir = '/app/tmp/screenshots'
         os.makedirs(screenshot_dir, exist_ok=True)
         
         # Generate filename

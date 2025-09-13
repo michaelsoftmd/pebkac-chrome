@@ -30,197 +30,52 @@ logger = logging.getLogger(__name__)
 # SafeCodeAgent implementation
 class SafeCodeAgent(CodeAgent):
     """
-    Enhanced CodeAgent that handles multiple final_answer calls and 
+   CodeAgent that handles multiple final_answer calls and 
     ensures complete code execution.
     """
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.execution_log = []
-        self.partial_results = []
         self.last_code = None
-        self.original_task = None
-        self._in_recovery = False
-        self.error_buffer = []  # Store errors instead of returning them immediately
-        self.suppress_intermediate_errors = True  # Control error suppression
-        self.max_recovery_attempts = 3  # Prevent infinite recovery loops
-        self.recovery_attempts = 0
     
     def run(self, task: str, **kwargs) -> Any:
-        """Enhanced run that ensures final_answer is always provided."""
-        self.original_task = task
-        self.error_buffer = []  # Clear error buffer for new run
-        self.recovery_attempts = 0  # Reset recovery counter
-        
+        """Simplified run - trust SmolAgents' error handling"""
         try:
-            # First attempt with standard execution
             result = super().run(task, **kwargs)
             
-            # Check if we got a final answer
+            # Only check for missing final_answer
             if not self._has_final_answer(result):
-                result = self._ensure_final_answer(result)
-            
-            # Reset suppression flag on successful completion
-            self.suppress_intermediate_errors = True
+                # Simple retry with instruction
+                enhanced_task = f"{task}\n\nIMPORTANT: End with final_answer(your_result)"
+                result = super().run(enhanced_task, **kwargs)
             
             return result
             
         except Exception as e:
+            # Don't create fake answers, let the error be visible
             logger.error(f"Agent execution failed: {e}")
-            # Always provide a final answer even on failure
-            return self._create_error_final_answer(str(e))
+            raise
     
-    def _detect_incomplete_execution(self, result: Any) -> bool:
-        """Detect if execution was terminated prematurely."""
-        if hasattr(self, 'last_code') and self.last_code:
-            code_lines = self.last_code.split('\n')
-            
-            # Check for multiple final_answer calls
-            final_answer_count = sum(1 for line in code_lines if 'final_answer' in line)
-            if final_answer_count > 1:
-                return True
-            
-            # Check if final_answer appears before important operations
-            final_answer_line = -1
-            important_operations = [
-                'extract', 'navigate', 'click', 'type_text', 'search',
-                'visit_webpage', 'cloudflare_bypass', 'find_elements',
-                'scroll', 'screenshot', 'parallel_extraction'
-            ]
-            
-            for i, line in enumerate(code_lines):
-                if 'final_answer' in line:
-                    final_answer_line = i
-                    break
-            
-            if final_answer_line >= 0:
-                for i in range(final_answer_line + 1, len(code_lines)):
-                    if any(op in code_lines[i] for op in important_operations):
-                        return True
-        
-        return False
     
-    def _recover_execution(self, task: str, partial_result: Any) -> Any:
-        """Attempt to recover from incomplete execution."""
-        # Check if we've exceeded max recovery attempts
-        if self.recovery_attempts >= self.max_recovery_attempts:
-            logger.warning(f"Max recovery attempts ({self.max_recovery_attempts}) reached")
-            return partial_result
-        
-        self.recovery_attempts += 1
-        logger.info(f"Recovery attempt {self.recovery_attempts}/{self.max_recovery_attempts}")
-        
-        modified_task = f"""
-        {task}
-        
-        IMPORTANT INSTRUCTIONS:
-        1. Execute ALL necessary steps before providing the final answer
-        2. Do not call final_answer until all operations are complete
-        3. If you need to perform multiple operations, do them sequentially
-        4. Only call final_answer ONCE at the very end
-        """
-        
-        try:
-            self._in_recovery = True
-            original_max_steps = self.max_steps
-            self.max_steps = min(self.max_steps * 2, 30)
-            
-            result = super().run(modified_task)
-            
-            self.max_steps = original_max_steps
-            self._in_recovery = False
-            return result
-        except Exception as e:
-            logger.error(f"Recovery failed: {e}")
-            self._in_recovery = False
-            return partial_result
-    
-    def _fallback_execution(self, task: str, error: str) -> Any:
-        """Fallback execution with simplified approach."""
-        simplified_task = f"""
-        Complete this task step by step: {task}
-        
-        Previous attempt failed with error: {error}
-        
-        Instructions:
-        1. Break this into simple, sequential operations
-        2. Execute each operation completely before moving to the next
-        3. Only provide the final answer after all steps are done
-        """
-        
-        try:
-            return super().run(simplified_task, max_steps=15)
-        except Exception as e:
-            return f"Task failed after recovery attempts: {str(e)}"
     
     def execute(self, code: str, state: Optional[Dict] = None) -> Any:
-        """Override execute to capture errors without sending them to output."""
-        # Store the code for analysis
+        """Simplified execute - let errors propagate naturally"""
         self.last_code = code
         
-        # Check for multiple final_answer patterns before execution
+        # Still check for multiple final_answer calls
         if code.count('final_answer') > 1:
             logger.warning(f"Multiple final_answer calls detected, restructuring code")
             code = self._restructure_code(code)
         
-        # Capture stdout/stderr to prevent intermediate outputs
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        captured_output = StringIO()
-        
+        # Just execute - no error suppression
         try:
-            if self.suppress_intermediate_errors:
-                sys.stdout = captured_output
-                sys.stderr = captured_output
-            
-            # Execute the code
             result = super().execute(code, state)
-            
-            # Only store successful results
-            if result is not None and "error" not in str(result).lower():
-                self.partial_results.append(result)
-            
             return result
-            
         except Exception as e:
-            # Buffer the error instead of raising it immediately
-            error_msg = str(e)
-            self.error_buffer.append({
-                'type': type(e).__name__,
-                'message': error_msg,
-                'code_snippet': code[:200] if code else None,
-                'timestamp': time.time()
-            })
-            
-            # Limit error buffer size to prevent memory issues
-            if len(self.error_buffer) > 50:
-                self.error_buffer = self.error_buffer[-50:]
-            
-            logger.error(f"Buffered error: {error_msg}")
-            
-            # Return a placeholder instead of raising and TRACK IT
-            if "timeout" in error_msg.lower():
-                placeholder = {"type": "timeout", "message": "Operation timed out", "partial": True, "details": error_msg[:100]}
-                self.partial_results.append(placeholder)
-                return placeholder
-            elif "not found" in error_msg.lower():
-                placeholder = {"type": "not_found", "message": "Element not found", "partial": True, "details": error_msg[:100]}
-                self.partial_results.append(placeholder)
-                return placeholder
-            else:
-                placeholder = {"type": "error", "message": f"Error occurred: {error_msg[:50]}", "partial": True, "details": error_msg[:100]}
-                self.partial_results.append(placeholder)
-                return placeholder
-                
-        finally:
-            # Restore stdout/stderr
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            
-            # Log captured output for debugging
-            output = captured_output.getvalue()
-            if output:
-                logger.debug(f"Captured output: {output[:500]}")
+            # Log for debugging but let it bubble up
+            logger.error(f"Execution failed: {e}")
+            raise  # Let SmolAgents handle it
     
     def _restructure_code(self, code: str) -> str:
         """Restructure code to ensure single final_answer at the end."""
@@ -243,9 +98,6 @@ class SafeCodeAgent(CodeAgent):
         
         return code
     
-    def get_execution_history(self) -> List[Dict]:
-        """Get the execution history for debugging."""
-        return self.execution_log
     
     def _has_final_answer(self, result: Any) -> bool:
         """Check if result contains a proper final answer."""
@@ -258,69 +110,6 @@ class SafeCodeAgent(CodeAgent):
             "final_answer" in result_str.lower(),
             isinstance(result, dict) and 'final_answer' in result
         ])
-    
-    def _ensure_final_answer(self, partial_result: Any) -> str:
-        """Ensure a final answer is provided even with errors."""
-        # Compile information from partial results and errors
-        response_parts = []
-        
-        # Add any successful partial results
-        if self.partial_results:
-            response_parts.append("Completed operations:")
-            for i, result in enumerate(self.partial_results[-3:], 1):  # Last 3 results
-                if isinstance(result, dict) and result.get('partial'):
-                    # It's a placeholder/error result
-                    response_parts.append(f"{i}. {result.get('message', 'Unknown operation')}")
-                elif result and str(result).strip():
-                    response_parts.append(f"{i}. {str(result)[:150]}")
-        
-        # Add error summary if any
-        if self.error_buffer:
-            response_parts.append("\nEncountered issues:")
-            unique_errors = {}
-            for error in self.error_buffer:
-                error_type = error['type']
-                if error_type not in unique_errors:
-                    unique_errors[error_type] = error['message']
-            
-            for error_type, message in unique_errors.items():
-                if "timeout" in message.lower():
-                    response_parts.append(f"- Some operations timed out")
-                elif "not found" in message.lower():
-                    response_parts.append(f"- Some elements were not found")
-                else:
-                    response_parts.append(f"- {error_type}: {message[:100]}")
-        
-        # Create final answer
-        if response_parts:
-            return "\n".join(response_parts)
-        else:
-            return "Task completed with limited results due to errors."
-    
-    def _create_error_final_answer(self, error: str) -> str:
-        """Create a final answer when the entire execution fails."""
-        if self.partial_results:
-            # We have some results despite the failure
-            results_summary = "\n".join([str(r)[:100] for r in self.partial_results[:3]])
-            return f"Task partially completed. Results:\n{results_summary}\n\nError: {error[:200]}"
-        else:
-            # Complete failure - provide informative response
-            if "timeout" in error.lower():
-                return "The operation timed out. Please try with a shorter task or increase timeout limits."
-            elif "context" in error.lower():
-                return "The task exceeded available resources. Please try a simpler query."
-            else:
-                return f"Unable to complete task due to: {error[:200]}"
-
-    def clear_history(self):
-        """Clear execution history and partial results."""
-        self.execution_log = []
-        self.partial_results = []
-        self.last_code = None
-        self._in_recovery = False
-        self.error_buffer = []
-        self.recovery_attempts = 0
-        self.suppress_intermediate_errors = True  # Reset to default state
 
 # Configuration from environment
 ACTIVE_OPENAI_URL = os.getenv("ACTIVE_OPENAI_URL", "http://llama-cpp-server:8080/v1")
@@ -382,13 +171,15 @@ class NavigateBrowserTool(Tool):
             if response.status_code == 200:
                 return f"Successfully navigated to {url}"
             else:
-                return "Navigation failed, unable to load page"
+                # Don't return error string, raise exception
+                raise Exception(f"Navigation failed: HTTP {response.status_code}")
                 
         except httpx.TimeoutException:
-            return f"Navigation timed out for {url}, page may be slow or unavailable"
+            # Let SmolAgents see the actual timeout
+            raise TimeoutError(f"Navigation timed out after {TIMEOUTS.page_load}s: {url}")
         except Exception as e:
             logger.warning(f"Navigation error: {e}")
-            return "Navigation failed"
+            raise  # Let SmolAgents handle it
 
 class GetCurrentURLTool(Tool):
     name = "get_current_url"
@@ -520,7 +311,7 @@ class CloudflareBypassTool(Tool):
                 else:
                     error_msg = solve_data.get('error', solve_data.get('message', 'Unknown error'))
                     challenge_type = solve_data.get('type', 'challenge')
-                    return f"Failed to solve {challenge_type}: {error_msg}"
+                    raise Exception(f"Failed to solve {challenge_type}: {error_msg}")
             
             return "Challenge detected but no active challenge to solve."
             
@@ -562,7 +353,7 @@ class ClickElementTool(Tool):
                 
         except Exception as e:
             logger.error(f"Click error: {e}")
-            return f"Click failed: {str(e)}"
+            raise  # Let SmolAgents handle the error
 
 class ExtractContentTool(Tool):
     name = "extract_content"
@@ -612,17 +403,16 @@ class ExtractContentTool(Tool):
                         return f"Title: {title}\n\n{text}"
                     return "Content extracted but no details available"
                 else:
-                    return "Extraction failed, no content available"
+                    raise Exception(f"Extraction failed: HTTP {response.status_code}")
             else:
-                return "Unable to extract content at this time"
+                raise Exception("Unable to extract content - API unreachable")
                 
         except httpx.TimeoutException:
-            # Return placeholder instead of raising
-            return "Extraction timed out, skipping this content"
+            raise TimeoutError(f"Content extraction timed out after {TIMEOUTS.http_extraction}s")
         except Exception as e:
             # Generic error handling
             logger.warning(f"Extraction error: {e}")
-            return "Content unavailable"
+            raise  # Let SmolAgents handle it
 
 class TypeTextTool(Tool):
     name = "type_text"
@@ -701,13 +491,13 @@ class KeyboardNavigationTool(Tool):
 
 class WebSearchTool(Tool):
     name = "web_search"
-    description = """Search the web using various search engines OR search within specific sites. Returns JSON with results array.
+    description = """Search the web using various search engines OR search within specific sites. Returns Python dict with results array.
     Examples:
     - 'laptops' -> searches DuckDuckGo for laptops
     - 'search google for laptops' -> searches Google for laptops  
     - 'laptops on amazon' -> searches within Amazon for laptops
-    - Returns: JSON string with 'results' array containing objects with 'title', 'url', 'domain' fields
-    - Access results like: import json; data = json.loads(search_result); urls = [r['url'] for r in data['results']]
+    - Returns: Python dict with 'query', 'engine', and 'results' keys
+    - Access results like: urls = [r['url'] for r in search_result['results']]
     - For navigation to specific sites, use navigate_browser tool instead."""
     inputs = {
         "query": {"type": "string", "description": "Search query"},
@@ -1319,11 +1109,8 @@ async def run_agent(request: AgentRequest):
             tools=tools,
             model=model,
             max_steps=request.max_steps or SMOLAGENTS_MAX_STEPS,
-            additional_authorized_imports=["json"]
+            additional_authorized_imports=["json", "time", "re"]  # Common imports
         )
-        
-        # Enable error suppression for intermediate outputs
-        agent.suppress_intermediate_errors = True
         
         logger.info("Created CodeAgent")
         logger.info(f"Available tools: {[tool.name for tool in tools]}")

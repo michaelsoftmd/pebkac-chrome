@@ -232,6 +232,52 @@ async def compose_up():
             "message": str(e)
         }
 
+@app.post("/api/export/copy-tmp")
+async def copy_tmp_to_exports():
+    """Copy all files from zendriver container's /tmp to mounted /exports"""
+    import shutil
+    
+    try:
+        # Paths for zendriver container's tmp directories
+        tmp_screenshots = Path('/mnt/ssd/podman/zendriver_tmp/screenshots')
+        tmp_exports = Path('/mnt/ssd/podman/zendriver_tmp/exports')
+        
+        # Destination exports directory
+        exports_dir = Path('/mnt/ssd/podman/exports')
+        exports_dir.mkdir(exist_ok=True)
+        
+        copied_files = []
+        
+        # Copy screenshots if they exist
+        if tmp_screenshots.exists():
+            for file_path in tmp_screenshots.glob('*'):
+                if file_path.is_file():
+                    dest_path = exports_dir / file_path.name
+                    shutil.copy2(file_path, dest_path)
+                    copied_files.append(f"screenshots/{file_path.name}")
+        
+        # Copy markdown exports if they exist
+        if tmp_exports.exists():
+            for file_path in tmp_exports.glob('*'):
+                if file_path.is_file():
+                    dest_path = exports_dir / file_path.name
+                    shutil.copy2(file_path, dest_path)
+                    copied_files.append(f"exports/{file_path.name}")
+        
+        return {
+            "status": "success",
+            "message": f"Copied {len(copied_files)} files to exports directory",
+            "files": copied_files,
+            "destination": str(exports_dir)
+        }
+        
+    except Exception as e:
+        logger.error(f"Export copy error: {e}")
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""

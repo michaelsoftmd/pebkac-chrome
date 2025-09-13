@@ -2,59 +2,115 @@
 import os
 import asyncio
 import logging
+import uuid
+import shutil
 from typing import Optional, Dict, Any
+from pathlib import Path
 import zendriver as zd
 from app.core.timeouts import TIMEOUTS
 
 logger = logging.getLogger(__name__)
 
 class BrowserManager:
-    """Browser manager with warmup pool using Zendriver's native API"""
+    """Browser manager with unique profile directories to prevent locks"""
     def __init__(self, settings):
         self.settings = settings
         self.browser = None
         self.current_tab = None
         self.lock = asyncio.Lock()
+        # Add profile management
+        self.profile_dir = None
+        self.temp_profiles = []  # Track for cleanup
+    
+    async def _check_profile_lock(self, profile_path: Path) -> bool:
+        """Check if profile is locked by another process"""
+        lock_file = profile_path / "SingletonLock"
+        if lock_file.exists():
+            try:
+                # Try to remove stale lock
+                lock_file.unlink()
+                logger.warning(f"Removed stale lock file: {lock_file}")
+                return False
+            except PermissionError:
+                # Lock is active
+                return True
+        return False
     
     async def warmup_pool(self):
-        """Pre-initialize persistent browser instance at startup"""
+        """Fixed warmup with unique profile"""
         async with self.lock:
             if not self.browser:
                 try:
                     logger.info("Initializing persistent browser instance...")
                     
-                    # Start single persistent browser with profile persistence
+                    # Create unique profile directory
+                    self.profile_dir = Path(f"{self.settings.profiles_dir}/session_{uuid.uuid4().hex[:8]}")
+                    self.profile_dir.mkdir(parents=True, exist_ok=True)
+                    
+                    # Docker-compatible browser args
+                    enhanced_args = self.settings.browser_args.copy()
+                    enhanced_args.extend([
+                        "--no-sandbox",  # Required in Docker
+                        "--disable-setuid-sandbox",  # Also for Docker
+                        "--disable-dev-shm-usage",  # Prevent /dev/shm issues
+                        "--disable-gpu-sandbox",  # GPU sandbox issues in container
+                        "--disable-features=site-per-process",  # Reduce process count
+                    ])
+                    
                     self.browser = await zd.start(
                         headless=self.settings.browser_headless,
-                        browser_args=self.settings.browser_args,
-                        user_data_dir=f"{self.settings.profiles_dir}/default_profile"
+                        browser_args=enhanced_args,
+                        user_data_dir=str(self.profile_dir)
                     )
                     
-                    # Create initial tab with about:blank for fast startup
                     self.current_tab = await self.browser.get("about:blank")
-                    logger.info("Persistent browser initialized - ready for use")
+                    logger.info(f"Browser initialized with profile: {self.profile_dir}")
                     
                 except Exception as e:
                     logger.error(f"Browser initialization failed: {e}")
+                    # Clean up profile on failure
+                    if self.profile_dir and self.profile_dir.exists():
+                        shutil.rmtree(self.profile_dir, ignore_errors=True)
                     self.browser = None
                     self.current_tab = None
+                    self.profile_dir = None
 
     async def get_browser(self):
-        """Get persistent browser instance"""
+        """Get browser with lock checking"""
         async with self.lock:
             if not self.browser:
-                # Create browser if not initialized (fallback if warmup failed)
-                logger.info("Creating browser instance (warmup not available)")
+                # Check for stale browser processes
+                if self.profile_dir:
+                    if await self._check_profile_lock(self.profile_dir):
+                        logger.warning("Profile locked, creating new one")
+                        self.profile_dir = None
+                
+                # Create browser with fresh profile if needed
+                if not self.profile_dir:
+                    self.profile_dir = Path(f"{self.settings.profiles_dir}/session_{uuid.uuid4().hex[:8]}")
+                    self.profile_dir.mkdir(parents=True, exist_ok=True)
+                
+                logger.info(f"Creating browser instance with profile: {self.profile_dir}")
+                
+                # Enhanced browser args for Docker environment
+                enhanced_args = self.settings.browser_args.copy()
+                enhanced_args.extend([
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox", 
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu-sandbox",
+                    "--disable-features=site-per-process",
+                ])
                 
                 self.browser = await zd.start(
                     headless=self.settings.browser_headless,
-                    browser_args=self.settings.browser_args,
-                    user_data_dir=f"{self.settings.profiles_dir}/default_profile"
+                    browser_args=enhanced_args,
+                    user_data_dir=str(self.profile_dir)
                 )
                 
                 # Create initial tab
                 self.current_tab = await self.browser.get("about:blank")
-                logger.info("Fallback browser created")
+                logger.info("Browser created successfully")
                 
             return self.browser
     
@@ -138,7 +194,7 @@ class BrowserManager:
             pass
     
     async def close_browser(self):
-        """Close browser and warmup browser properly"""
+        """Close browser and clean up profile directory"""
         async with self.lock:
             if self.browser:
                 logger.info("Shutting down browser")
@@ -150,5 +206,13 @@ class BrowserManager:
                 finally:
                     self.browser = None
                     self.current_tab = None
-        
-        # No separate warmup browser to close in new design
+            
+            # Clean up profile directory
+            if self.profile_dir and self.profile_dir.exists():
+                try:
+                    shutil.rmtree(self.profile_dir, ignore_errors=True)
+                    logger.info(f"Cleaned up profile: {self.profile_dir}")
+                except Exception as e:
+                    logger.error(f"Failed to clean profile: {e}")
+                finally:
+                    self.profile_dir = None

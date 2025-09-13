@@ -231,6 +231,19 @@
             box-shadow: 0 4px 16px rgba(255, 136, 0, 0.3);
         }
 
+        .btn-secondary {
+            background: rgba(107, 114, 128, 0.1);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+            color: rgba(107, 114, 128, 0.9);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(107, 114, 128, 0.2);
+            border-color: rgba(107, 114, 128, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+        }
+
         .status {
             display: flex;
             align-items: center;
@@ -548,6 +561,7 @@
             <div class="controls">
                 <button id="compose-up" class="btn btn-boot" onclick="composeUp()">Boot System</button>
                 <button id="vnc-toggle" class="btn btn-primary" onclick="toggleVNC()">Start VNC</button>
+                <button id="copy-exports" class="btn btn-secondary" onclick="copyExports()">Copy Exports</button>
                 <button id="stop-all" class="btn btn-danger" onclick="stopAll()">Stop Services</button>
             </div>
             <div class="status-indicator">
@@ -703,6 +717,44 @@
             } finally {
                 button.disabled = false;
                 button.textContent = 'Boot System';
+            }
+        }
+
+        async function copyExports() {
+            const button = document.getElementById('copy-exports');
+            try {
+                button.disabled = true;
+                button.textContent = 'Copying...';
+                
+                const response = await fetch('/api/export/copy-tmp', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    button.textContent = `Copied ${data.files.length} files`;
+                    addLogLine(`Export copy successful: ${data.message}`, 'success');
+                    if (data.files.length > 0) {
+                        addLogLine(`Files copied: ${data.files.join(', ')}`, 'info');
+                    }
+                    setTimeout(() => {
+                        button.textContent = 'Copy Exports';
+                    }, 3000);
+                } else {
+                    addLogLine(`Export copy failed: ${data.error}`, 'error');
+                    button.textContent = 'Copy Failed';
+                    setTimeout(() => {
+                        button.textContent = 'Copy Exports';
+                    }, 3000);
+                }
+            } catch (error) {
+                addLogLine(`Export copy error: ${error.message}`, 'error');
+                button.textContent = 'Error';
+                setTimeout(() => {
+                    button.textContent = 'Copy Exports';
+                }, 3000);
+            } finally {
+                button.disabled = false;
             }
         }
 

@@ -11,7 +11,7 @@ services:
       - RENDER_GROUP_GID=992
       - SWAY_RESOLUTION=640x480
       - WAYVNC_PORT=5910
-      - WAYVNC_ENABLE_AUTH=true
+      - WAYVNC_ENABLE_AUTH=false
       - WAYVNC_USERNAME=wayvnc
       - WAYVNC_PASSWORD=wayvnc
     devices:

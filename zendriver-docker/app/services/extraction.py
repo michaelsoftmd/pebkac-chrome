@@ -54,7 +54,7 @@ class UnifiedExtractionService:
             text_output = trafilatura.extract(
                 html,
                 url=url,
-                favor_precision=True,
+                favor_precision=False,
                 include_comments=False,
                 include_tables=True,
                 with_metadata=True,
