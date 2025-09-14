@@ -4,7 +4,7 @@ Zendriver Browser Automation API
 
 import os
 import asyncio
-from fastapi import FastAPI, HTTPException, Query, Body, Depends
+from fastapi import FastAPI, HTTPException, Query, Body, Depends, status
 from contextlib import asynccontextmanager
 import uvicorn
 import logging
@@ -180,7 +180,7 @@ async def health_check(
 ):
     """Health check endpoint"""
     browser_status = browser_manager.browser is not None
-    warmup_status = browser_manager.warmup_browser is not None
+    warmup_status = browser_manager.browser is not None
     
     db_healthy = False
     try:
@@ -430,7 +430,10 @@ async def detect_cloudflare(
         
     except Exception as e:
         logger.error(f"Cloudflare detection error: {e}")
-        return {"status": "error", "error": str(e)}
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"error": "detection_failed", "message": str(e)}
+        )
 
 async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
     """
@@ -451,7 +454,7 @@ async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
         anchor_frame = None
         for selector in iframe_selectors:
             try:
-                anchor_frame = await tab.find(selector, timeout=3)
+                anchor_frame = await tab.find(selector, timeout=TIMEOUTS.element_find)
                 if anchor_frame:
                     logger.info(f"Found reCAPTCHA iframe with selector: {selector}")
                     break
@@ -507,7 +510,7 @@ async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
             
             # Check if challenge iframe appeared 
             try:
-                challenge_frame = await tab.find('iframe[src*="bframe"]', timeout=2)
+                challenge_frame = await tab.find('iframe[src*="bframe"]', timeout=TIMEOUTS.element_find)
                 if challenge_frame:
                     return True, "reCAPTCHA checkbox clicked - challenge appeared (requires manual solving)"
             except:
@@ -1134,14 +1137,14 @@ async def list_network_requests(
 # ===========================
 # Export Operations
 # ===========================
-@app.post("/export/page_markdown")
-async def export_page_as_markdown(
+@app.post("/garbo/page_markdown")
+async def garbo_page_as_markdown(
     browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
     settings: Annotated[Settings, Depends(get_settings)],
     include_metadata: bool = Body(True, description="Include page metadata"),
     use_trafilatura: bool = Body(True, description="Use Trafilatura for better extraction")
 ):
-    """Export current page content as markdown"""
+    """Garbo current page content as markdown"""
     tab = await browser_manager.get_tab()
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1187,7 +1190,7 @@ async def export_page_as_markdown(
     md_content += content if content else "No content extracted"
     
     # Save file to tmp directory (same pattern as screenshots)
-    exports_dir = '/app/tmp/exports'
+    exports_dir = '/tmp/exports'
     os.makedirs(exports_dir, exist_ok=True)
     
     # Clean filename from title
@@ -1218,8 +1221,8 @@ async def take_screenshot(
     tab = await browser_manager.get_tab()
     
     try:
-        # Screenshot directory - use /app/tmp/screenshots (mounted to host)
-        screenshot_dir = '/app/tmp/screenshots'
+        # Screenshot directory - use system /tmp (always writable)
+        screenshot_dir = '/tmp/screenshots'
         os.makedirs(screenshot_dir, exist_ok=True)
         
         # Generate filename

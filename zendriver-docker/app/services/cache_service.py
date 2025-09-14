@@ -174,21 +174,21 @@ class ExtractorCacheService:
         
         return selector_stats[:10]  # Return top 10
 
+    def _sanitize_value(self, value: Any) -> str:
+        """Handle RemoteObject and other types consistently"""
+        if hasattr(value, 'value'):  # RemoteObject
+            return str(value.value) if value.value is not None else ""
+        if isinstance(value, tuple) and len(value) >= 1:
+            return self._sanitize_value(value[0])
+        return str(value) if value is not None else ""
+
     def should_bypass_cache(self, url: str, selector: str, context: Any) -> bool:
         """Determine if caching should be bypassed based on URL/context patterns"""
 
-        # Fix the context parameter handling
-        if isinstance(context, tuple):
-            # If context is a tuple, take the first element
-            context = context[0] if context else ""
-        if context is None:
-            context = ""
-        if not isinstance(context, str):
-            context = str(context)
-        
-        # Handle None values and RemoteObject for url and selector
-        url = str(url) if url is not None else ""
-        selector = str(selector) if selector is not None else ""
+        # Use centralized sanitization for RemoteObject handling
+        url = self._sanitize_value(url)
+        selector = self._sanitize_value(selector)
+        context = self._sanitize_value(context)
 
         # 1. Search operations - never cache
         if "search" in context.lower() or any(engine in url.lower() for engine in [
@@ -205,11 +205,11 @@ class ExtractorCacheService:
 
     def should_cache_content(self, url: str, selector: str, context: str) -> bool:
         """Determine if content should be cached based on patterns"""
-        
-        # Handle None values and RemoteObject types
-        url = str(url) if url is not None else ""
-        selector = str(selector) if selector is not None else ""
-        context = str(context) if context is not None else ""
+
+        # Use centralized sanitization for RemoteObject handling
+        url = self._sanitize_value(url)
+        selector = self._sanitize_value(selector)
+        context = self._sanitize_value(context)
         
         # Never cache if should bypass
         if self.should_bypass_cache(url, selector, context):
@@ -224,11 +224,11 @@ class ExtractorCacheService:
 
     def get_cache_ttl(self, url: str, selector: str, context: str) -> int:
         """Get appropriate TTL based on selector type and context"""
-        
-        # Handle None values and RemoteObject types
-        url = str(url) if url is not None else ""
-        selector = str(selector) if selector is not None else ""
-        context = str(context) if context is not None else ""
+
+        # Use centralized sanitization for RemoteObject handling
+        url = self._sanitize_value(url)
+        selector = self._sanitize_value(selector)
+        context = self._sanitize_value(context)
         
         # Search context or bypass patterns - no cache
         if self.should_bypass_cache(url, selector, context):

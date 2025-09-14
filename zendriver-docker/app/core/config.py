@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     
     # Paths
     data_dir: str = "/app/data"
-    profiles_dir: str = "/app/data/profiles"
-    exports_dir: str = "/app/data/exports"
+    profiles_dir: str = "/app/profiles"
+    exports_dir: str = "/tmp/exports"
     
     # Database (FIXED: 3 slashes instead of 4)
     database_url: str = "sqlite:///app/data/research.db"

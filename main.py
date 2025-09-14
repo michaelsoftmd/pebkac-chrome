@@ -234,43 +234,46 @@ async def compose_up():
 
 @app.post("/api/export/copy-tmp")
 async def copy_tmp_to_exports():
-    """Copy all files from zendriver container's /tmp to mounted /exports"""
-    import shutil
-    
+    """Copy files from container /tmp to host using podman cp"""
+    from datetime import datetime
+
     try:
-        # Paths for zendriver container's tmp directories
-        tmp_screenshots = Path('/mnt/ssd/podman/zendriver_tmp/screenshots')
-        tmp_exports = Path('/mnt/ssd/podman/zendriver_tmp/exports')
-        
-        # Destination exports directory
-        exports_dir = Path('/mnt/ssd/podman/exports')
-        exports_dir.mkdir(exist_ok=True)
-        
-        copied_files = []
-        
-        # Copy screenshots if they exist
-        if tmp_screenshots.exists():
-            for file_path in tmp_screenshots.glob('*'):
-                if file_path.is_file():
-                    dest_path = exports_dir / file_path.name
-                    shutil.copy2(file_path, dest_path)
-                    copied_files.append(f"screenshots/{file_path.name}")
-        
-        # Copy markdown exports if they exist
-        if tmp_exports.exists():
-            for file_path in tmp_exports.glob('*'):
-                if file_path.is_file():
-                    dest_path = exports_dir / file_path.name
-                    shutil.copy2(file_path, dest_path)
-                    copied_files.append(f"exports/{file_path.name}")
-        
+        # Create host export directory with timestamp
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        host_export_dir = Path(f'/mnt/ssd/podman/exports_{timestamp}')
+        host_export_dir.mkdir(parents=True, exist_ok=True)
+
+        # Copy screenshots from container
+        result_screenshots = await asyncio.create_subprocess_exec(
+            'podman', 'cp', 'zendriver:/tmp/screenshots', str(host_export_dir),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout_s, stderr_s = await result_screenshots.communicate()
+
+        # Copy markdown exports from container
+        result_markdown = await asyncio.create_subprocess_exec(
+            'podman', 'cp', 'zendriver:/tmp/exports', str(host_export_dir),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout_m, stderr_m = await result_markdown.communicate()
+
+        # Count files copied
+        files_copied = []
+        if host_export_dir.exists():
+            for ext in ['*.png', '*.jpg', '*.md']:
+                files_copied.extend(host_export_dir.rglob(ext))
+
         return {
             "status": "success",
-            "message": f"Copied {len(copied_files)} files to exports directory",
-            "files": copied_files,
-            "destination": str(exports_dir)
+            "message": f"Exported {len(files_copied)} files",
+            "destination": str(host_export_dir),
+            "screenshots": result_screenshots.returncode == 0,
+            "markdown": result_markdown.returncode == 0,
+            "files": [str(f.relative_to(host_export_dir)) for f in files_copied]
         }
-        
+
     except Exception as e:
         logger.error(f"Export copy error: {e}")
         return {

@@ -100,16 +100,26 @@ class SafeCodeAgent(CodeAgent):
     
     
     def _has_final_answer(self, result: Any) -> bool:
-        """Check if result contains a proper final answer."""
+        """Check if final_answer() function was actually called successfully."""
         if result is None:
             return False
-        
-        result_str = str(result)
-        # Check for patterns that indicate a final answer was provided
-        return any([
-            "final_answer" in result_str.lower(),
-            isinstance(result, dict) and 'final_answer' in result
-        ])
+
+        # Check if result is the actual return value from final_answer()
+        # SmolAgents returns the function result directly when successful
+        if isinstance(result, (str, dict, list, int, float)):
+            # If we got a concrete result, final_answer was called
+            return True
+
+        # For other types, check if it looks like an error or incomplete execution
+        result_str = str(result).lower()
+
+        # Signs that execution failed or was incomplete
+        error_indicators = [
+            "error", "exception", "failed", "traceback",
+            "undefined", "none", "null"
+        ]
+
+        return not any(indicator in result_str for indicator in error_indicators)
 
 # Configuration from environment
 ACTIVE_OPENAI_URL = os.getenv("ACTIVE_OPENAI_URL", "http://llama-cpp-server:8080/v1")
@@ -397,11 +407,15 @@ class ExtractContentTool(Tool):
                     
                     # Fallback to manual formatting
                     content = data.get("data")
-                    if content and isinstance(content, dict):
+                    if isinstance(content, list):
+                        # Format list of elements
+                        return f"Found {len(content)} elements: " + str(content[:5])[:800]
+                    elif isinstance(content, dict):
                         text = content.get('text', '')[:600]  # Limit content
                         title = content.get('title', 'Unknown')[:50]
                         return f"Title: {title}\n\n{text}"
-                    return "Content extracted but no details available"
+                    else:
+                        return str(content)[:800]
                 else:
                     raise Exception(f"Extraction failed: HTTP {response.status_code}")
             else:
@@ -836,9 +850,9 @@ class VisitWebpageTool(Tool):
             logger.error(f"Visit webpage error: {e}")
             return f"Failed to visit {url}: {str(e)}"
 
-class ExportPageMarkdownTool(Tool):
-    name = "export_page_markdown"
-    description = "Export the current browser page content as a markdown file"
+class GarboPageMarkdownTool(Tool):
+    name = "garbo_page_markdown"
+    description = "Garbo the current browser page content as a markdown file"
     inputs = {
         "include_metadata": {
             "type": "boolean",
@@ -855,10 +869,10 @@ class ExportPageMarkdownTool(Tool):
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
     def forward(self, include_metadata: bool = True) -> str:
-        """Export current page as markdown"""
+        """Garbo export current page as markdown"""
         try:
             response = self.client.post(
-                f"{self.api_url}/export/page_markdown",
+                f"{self.api_url}/garbo/page_markdown",
                 json={"include_metadata": include_metadata, "use_trafilatura": True}
             )
             
@@ -872,7 +886,7 @@ class ExportPageMarkdownTool(Tool):
                 
         except Exception as e:
             logger.error(f"Export error: {e}")
-            return f"Export failed: {str(e)}"
+            return f"Dump failed: {str(e)}"
             
 class ScreenshotTool(Tool):
     name = "take_screenshot"
@@ -1085,7 +1099,7 @@ async def run_agent(request: AgentRequest):
             KeyboardNavigationTool(ZENDRIVER_API_URL),
             WebSearchTool(ZENDRIVER_API_URL),
             SearchHistoryTool(DUCKDB_URL),
-            ExportPageMarkdownTool(ZENDRIVER_API_URL),
+            GarboPageMarkdownTool(ZENDRIVER_API_URL),
             ScreenshotTool(ZENDRIVER_API_URL),
             GetElementPositionTool(ZENDRIVER_API_URL),
             InterceptNetworkTool(ZENDRIVER_API_URL),

@@ -59,9 +59,10 @@ RUN uv sync --no-install-project || \
 # Copy application code
 COPY --chown=$DOCKER_USER:$DOCKER_USER app /app/app
 
-# Create data and profiles directories with proper ownership
-RUN mkdir -p /app/data /app/profiles /app/data/exports && \
-    chown -R $DOCKER_USER:$DOCKER_USER /app/data /app/profiles /app/data/exports
+# Create data, profiles, and tmp directories with proper ownership
+RUN mkdir -p /app/data /app/profiles /app/data/exports /app/tmp && \
+    mkdir -p /app/tmp/exports /app/tmp/screenshots && \
+    chown -R $DOCKER_USER:$DOCKER_USER /app/data /app/profiles /app/tmp
 
 # Set PATH
 ENV PATH="/app/.venv/bin:$PATH"
