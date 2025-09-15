@@ -576,7 +576,18 @@ class UnifiedExtractionService:
             'cached': False,
             'extraction_method': 'unknown'
         }
-        
+
+        # Use selector optimization if cache service available and no explicit selector
+        if not selector and not xpath and self.cache:
+            try:
+                optimized_selector = await self.cache.get_optimized_selector(current_url, "general")
+                if optimized_selector:
+                    logger.info(f"Using optimized selector for {current_url}: {optimized_selector}")
+                    selector = optimized_selector
+                    response['extraction_method'] = 'optimized_selector'
+            except Exception as e:
+                logger.warning(f"Selector optimization failed: {e}")
+
         # No selector = use smart extraction
         if not selector and not xpath:
             # Try Trafilatura first
@@ -669,7 +680,18 @@ class UnifiedExtractionService:
                 response['extraction_method'] = 'css_selector'
                 response['data'] = results if extract_all else (results[0] if results else None)
                 response['count'] = len(results)
-                
+
+                # Track selector performance for optimization
+                if self.cache:
+                    try:
+                        from urllib.parse import urlparse
+                        domain = urlparse(current_url).netloc
+                        if domain:
+                            success = len(results) > 0
+                            await self.cache.track_selector_performance(domain, selector, success)
+                    except Exception as e:
+                        logger.warning(f"Failed to track selector performance: {e}")
+
                 # Format response
                 if results:
                     # Create text preview for formatted output
@@ -696,6 +718,16 @@ Elements: {len(results)}
                 logger.error(f"Selector extraction failed: {e}")
                 response['status'] = 'error'
                 response['error'] = str(e)
+
+                # Track failed selector for optimization
+                if self.cache:
+                    try:
+                        from urllib.parse import urlparse
+                        domain = urlparse(current_url).netloc
+                        if domain:
+                            await self.cache.track_selector_performance(domain, selector, False)
+                    except Exception as e:
+                        logger.warning(f"Failed to track failed selector performance: {e}")
         
         # Cache successful extraction with metadata
         if use_cache and self.cache and response['status'] == 'success' and response.get('data'):

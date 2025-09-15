@@ -27,6 +27,11 @@ class TIMEOUTS:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Helper function for session headers
+def get_session_headers(session_id: str = "default") -> Dict[str, str]:
+    """Get headers for session-based requests"""
+    return {"X-Session-ID": session_id} if session_id != "default" else {}
+
 # SafeCodeAgent implementation
 class SafeCodeAgent(CodeAgent):
     """
@@ -147,9 +152,15 @@ class NavigateBrowserTool(Tool):
     inputs = {
         "url": {"type": "string", "description": "URL to navigate to"},
         "force_refresh": {
-            "type": "boolean", 
-            "description": "Force refresh bypassing cache", 
+            "type": "boolean",
+            "description": "Force refresh bypassing cache",
             "default": False,
+            "nullable": True
+        },
+        "session_id": {
+            "type": "string",
+            "description": "Browser session ID for persistent state",
+            "default": "default",
             "nullable": True
         }
     }
@@ -160,7 +171,7 @@ class NavigateBrowserTool(Tool):
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
-    def forward(self, url: str, force_refresh: bool = False) -> str:
+    def forward(self, url: str, force_refresh: bool = False, session_id: str = "default") -> str:
         """Navigate to URL using synchronous httpx with timeout handling"""
         # Validate URL first
         if not url.startswith(('http://', 'https://')):
@@ -175,6 +186,7 @@ class NavigateBrowserTool(Tool):
             response = self.client.post(
                 f"{self.api_url}/navigate",
                 json={"url": url, "force_refresh": force_refresh},
+                headers=get_session_headers(session_id),
                 timeout=TIMEOUTS.page_load
             )
             
@@ -194,7 +206,14 @@ class NavigateBrowserTool(Tool):
 class GetCurrentURLTool(Tool):
     name = "get_current_url"
     description = "Get the current URL of the browser tab"
-    inputs = {}
+    inputs = {
+        "session_id": {
+            "type": "string",
+            "description": "Browser session ID for persistent state",
+            "default": "default",
+            "nullable": True
+        }
+    }
     output_type = "string"
     
     def __init__(self, api_url: str):
@@ -202,10 +221,10 @@ class GetCurrentURLTool(Tool):
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
-    def forward(self) -> str:
+    def forward(self, session_id: str = "default") -> str:
         """Get current URL using synchronous httpx"""
         try:
-            response = self.client.get(f"{self.api_url}/get_current_url")
+            response = self.client.get(f"{self.api_url}/get_current_url", headers=get_session_headers(session_id))
             if response.status_code == 200:
                 data = response.json()
                 return data.get("url", "unknown")
@@ -232,9 +251,15 @@ class CloudflareBypassTool(Tool):
             "nullable": True
         },
         "wait_after": {
-            "type": "integer", 
+            "type": "integer",
             "description": "Seconds to wait after solving before continuing",
             "default": 3,
+            "nullable": True
+        },
+        "session_id": {
+            "type": "string",
+            "description": "Browser session ID for persistent state",
+            "default": "default",
             "nullable": True
         }
     }
@@ -245,11 +270,11 @@ class CloudflareBypassTool(Tool):
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
-    def forward(self, action: str = "auto", timeout: int = 15, wait_after: int = 3) -> str:
+    def forward(self, action: str = "auto", timeout: int = 15, wait_after: int = 3, session_id: str = "default") -> str:
         """Detect and/or solve Cloudflare challenges"""
         try:
             # First, always detect
-            detect_response = self.client.get(f"{self.api_url}/cloudflare/detect")
+            detect_response = self.client.get(f"{self.api_url}/cloudflare/detect", headers=get_session_headers(session_id))
             
             if detect_response.status_code != 200:
                 return f"Failed to check for Cloudflare: {detect_response.text}"
@@ -280,7 +305,8 @@ class CloudflareBypassTool(Tool):
                     json={
                         "timeout": timeout,
                         "click_delay": 5
-                    }
+                    },
+                    headers=get_session_headers(session_id)
                 )
                 
                 if solve_response.status_code != 200:
@@ -296,7 +322,7 @@ class CloudflareBypassTool(Tool):
                     time.sleep(wait_after)
                     
                     # Verify the challenge is gone
-                    verify_response = self.client.get(f"{self.api_url}/cloudflare/detect")
+                    verify_response = self.client.get(f"{self.api_url}/cloudflare/detect", headers=get_session_headers(session_id))
                     if verify_response.status_code == 200:
                         verify_data = verify_response.json()
                         if not verify_data.get("has_challenge"):
@@ -337,6 +363,12 @@ class ClickElementTool(Tool):
             "type": "string",
             "description": "CSS selector or text to click",
             "nullable": True
+        },
+        "session_id": {
+            "type": "string",
+            "description": "Browser session ID for persistent state",
+            "default": "default",
+            "nullable": True
         }
     }
     output_type = "string"
@@ -346,14 +378,15 @@ class ClickElementTool(Tool):
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
-    def forward(self, selector: str = "body") -> str:
+    def forward(self, selector: str = "body", session_id: str = "default") -> str:
         """Click element using synchronous httpx"""
         try:
             response = self.client.post(
                 f"{self.api_url}/click",
                 json={
                     "selector": selector if selector != "body" else None
-                }
+                },
+                headers=get_session_headers(session_id)
             )
             
             if response.status_code == 200:
@@ -370,9 +403,15 @@ class ExtractContentTool(Tool):
     description = "Extract content from the current page"
     inputs = {
         "selector": {
-            "type": "string", 
-            "description": "CSS selector to extract from (leave empty for universal extraction)", 
+            "type": "string",
+            "description": "CSS selector to extract from (leave empty for universal extraction)",
             "default": None,
+            "nullable": True
+        },
+        "session_id": {
+            "type": "string",
+            "description": "Browser session ID for persistent state",
+            "default": "default",
             "nullable": True
         }
     }
@@ -383,7 +422,7 @@ class ExtractContentTool(Tool):
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
-    def forward(self, selector: str = None) -> str:
+    def forward(self, selector: str = None, session_id: str = "default") -> str:
         """Extract content with timeout handling"""
         try:
             response = self.client.post(
@@ -393,6 +432,7 @@ class ExtractContentTool(Tool):
                     "extract_text": True,
                     "extract_all": False
                 },
+                headers=get_session_headers(session_id),
                 timeout=TIMEOUTS.http_extraction
             )
             
@@ -434,11 +474,17 @@ class TypeTextTool(Tool):
     inputs = {
         "text": {"type": "string", "description": "Text to type"},
         "selector": {
-            "type": "string", 
-            "description": "CSS selector of input field (optional - uses focused element if not provided)", 
+            "type": "string",
+            "description": "CSS selector of input field (optional - uses focused element if not provided)",
             "default": None,
             "nullable": True
         },
+        "session_id": {
+            "type": "string",
+            "description": "Browser session ID for persistent state",
+            "default": "default",
+            "nullable": True
+        }
     }
     output_type = "string"
     
@@ -447,7 +493,7 @@ class TypeTextTool(Tool):
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_request)
     
-    def forward(self, text: str, selector: Optional[str] = None) -> str:
+    def forward(self, text: str, selector: Optional[str] = None, session_id: str = "default") -> str:
         """Type text using synchronous httpx"""
         try:
             response = self.client.post(
@@ -456,7 +502,8 @@ class TypeTextTool(Tool):
                     "text": text,
                     "selector": selector,
                     "clear_first": True,
-                }
+                },
+                headers=get_session_headers(session_id)
             )
             
             if response.status_code == 200:

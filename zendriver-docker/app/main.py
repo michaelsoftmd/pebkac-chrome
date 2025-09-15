@@ -4,7 +4,7 @@ Zendriver Browser Automation API
 
 import os
 import asyncio
-from fastapi import FastAPI, HTTPException, Query, Body, Depends, status
+from fastapi import FastAPI, HTTPException, Query, Body, Depends, status, Header
 from contextlib import asynccontextmanager
 import uvicorn
 import logging
@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from zendriver import cdp
 import base64
 import re
+from pathlib import Path
 
 # Import refactored modules
 from urllib.parse import urlparse
@@ -85,14 +86,18 @@ class ExtractionRequest(BaseModel):
 # ===========================
 # Dependency injection functions
 # ===========================
-_browser_manager = None
 
-def get_browser_manager() -> BrowserManager:
-    """Get browser manager instance"""
-    global _browser_manager
-    if _browser_manager is None:
-        _browser_manager = BrowserManager(get_settings())
-    return _browser_manager
+# Global singleton browser manager instance
+_browser_manager_instance = None
+
+def get_browser_manager(
+    x_session_id: Annotated[Optional[str], Header(alias="X-Session-ID")] = None
+) -> BrowserManager:
+    """Get singleton browser manager"""
+    global _browser_manager_instance
+    if _browser_manager_instance is None:
+        _browser_manager_instance = BrowserManager(get_settings())
+    return _browser_manager_instance
 
 def get_database_manager() -> DatabaseManager:
     """Get database manager instance"""
@@ -123,28 +128,61 @@ def get_cache_service() -> ExtractorCacheService:
 # ===========================
 # Application Lifespan
 # ===========================
+
+async def cleanup_stale_locks():
+    """Clean all stale Chrome lock files on container startup"""
+    try:
+        settings = get_settings()
+        profiles_dir = Path(settings.profiles_dir)
+
+        if profiles_dir.exists():
+            lock_patterns = ["*/SingletonLock", "*/SingletonSocket", "*/SingletonCookie"]
+            cleaned_count = 0
+
+            for pattern in lock_patterns:
+                for lock_file in profiles_dir.glob(pattern):
+                    try:
+                        lock_file.unlink()
+                        cleaned_count += 1
+                        logger.info(f"Cleaned stale lock: {lock_file}")
+                    except Exception as e:
+                        logger.warning(f"Could not remove {lock_file}: {e}")
+
+            if cleaned_count > 0:
+                logger.info(f"Cleaned {cleaned_count} stale Chrome lock files")
+            else:
+                logger.info("No stale Chrome lock files found")
+        else:
+            logger.info(f"Profiles directory does not exist: {profiles_dir}")
+
+    except Exception as e:
+        logger.error(f"Error during lock cleanup: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     # Startup
     logger.info("Starting application...")
     init_db()
-    
-    # Initialize and warmup browser pool
+
+    # Clean stale Chrome lock files from previous container runs
+    await cleanup_stale_locks()
+
+    # Initialize default browser
     browser_manager = get_browser_manager()
     if browser_manager:
-        logger.info("Initializing browser warmup pool...")
+        logger.info("Initializing default browser...")
         try:
-            await browser_manager.warmup_pool()
-            logger.info("Browser warmup completed successfully")
+            await browser_manager.get_browser()  # Create default browser
+            logger.info("Default browser initialized successfully")
         except Exception as e:
-            logger.error(f"Browser warmup failed: {e}")
+            logger.error(f"Browser initialization failed: {e}")
     
     yield
     # Shutdown
     logger.info("Shutting down application...")
     if browser_manager:
-        await browser_manager.close_browser()
+        await browser_manager.cleanup_all()
 
 # Create FastAPI app
 app = FastAPI(
@@ -296,14 +334,16 @@ async def suggest_optimized_selectors(
 @app.post("/navigate")
 async def navigate_to_url(
     browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
-    request: NavigationRequest
+    request: NavigationRequest,
+    x_session_id: Annotated[Optional[str], Header(alias="X-Session-ID")] = None
 ):
     """Navigate to a URL"""
     try:
         result = await browser_manager.navigate(
             url=str(request.url),
             wait_for=request.wait_for,
-            wait_timeout=request.wait_timeout
+            wait_timeout=request.wait_timeout,
+            session_id=x_session_id
         )
         
         return {
@@ -464,35 +504,40 @@ async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
         if not anchor_frame:
             return False, "No reCAPTCHA iframe found"
         
-        # Get the iframe's position for clicking
+        # Click checkbox using JavaScript within iframe context
         try:
-            # Get bounding box using JavaScript
             from app.utils.browser_utils import safe_evaluate
-            frame_rect = await safe_evaluate(tab, f"""
-                (() => {{
-                    const iframe = document.querySelector('{iframe_selectors[0]}');
-                    if (!iframe) return null;
-                    const rect = iframe.getBoundingClientRect();
-                    return {{
-                        left: rect.left,
-                        top: rect.top,
-                        width: rect.width,
-                        height: rect.height
-                    }};
-                }})()
+            logger.info("Attempting to click reCAPTCHA checkbox via JavaScript iframe manipulation")
+
+            # Use JavaScript to click within the iframe context
+            click_result = await safe_evaluate(tab, """
+                (() => {
+                    const iframe = document.querySelector('iframe[src*="recaptcha/api2/anchor"], iframe[src*="recaptcha/enterprise/anchor"], iframe[title="reCAPTCHA"]');
+                    if (!iframe) return {success: false, error: 'No iframe found'};
+
+                    try {
+                        // Access iframe content
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                        if (!iframeDoc) return {success: false, error: 'Cannot access iframe content'};
+
+                        // Find and click the checkbox
+                        const checkbox = iframeDoc.querySelector('.recaptcha-checkbox-border, .recaptcha-checkbox, [role="checkbox"]');
+                        if (!checkbox) return {success: false, error: 'Checkbox not found in iframe'};
+
+                        // Click the checkbox
+                        checkbox.click();
+                        return {success: true, message: 'Checkbox clicked successfully'};
+                    } catch (e) {
+                        return {success: false, error: 'Cross-origin restriction: ' + e.message};
+                    }
+                })()
             """)
-            
-            if not frame_rect:
-                return False, "Could not get iframe position"
-            
-            # Click coordinates - checkbox is typically at these offsets within the iframe
-            click_x = frame_rect['left'] + 30  # Checkbox is ~30px from left
-            click_y = frame_rect['top'] + (frame_rect['height'] / 2)  # Vertically centered
-            
-            logger.info(f"Clicking reCAPTCHA at coordinates: ({click_x}, {click_y})")
-            
-            # Click the checkbox using coordinates
-            await tab.mouse_click(click_x, click_y)
+
+            if not click_result or not click_result.get('success'):
+                error_msg = click_result.get('error', 'Unknown error') if click_result else 'No result from JavaScript'
+                return False, f"Failed to click reCAPTCHA checkbox: {error_msg}"
+
+            logger.info("reCAPTCHA checkbox clicked via JavaScript")
             
             # Wait for click to register
             await asyncio.sleep(2)
@@ -1249,6 +1294,49 @@ async def take_screenshot(
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         await browser_manager.release_tab(tab)
+
+# ===========================
+# Session Management Endpoints
+# ===========================
+
+@app.get("/sessions")
+async def list_sessions(browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)]):
+    """List all active browser sessions"""
+    from app.core.browser import _browser_pool, _default_browser
+
+    sessions = list(_browser_pool.keys())
+    if _default_browser:
+        sessions.append("default")
+
+    return {
+        "sessions": sessions,
+        "count": len(sessions)
+    }
+
+@app.post("/sessions/{session_id}")
+async def create_session(
+    session_id: str,
+    browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)]
+):
+    """Create or get a specific browser session"""
+    try:
+        await browser_manager.get_browser(session_id)
+        return {"message": f"Session '{session_id}' created/accessed", "session_id": session_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+
+@app.delete("/sessions/{session_id}")
+async def delete_session(
+    session_id: str,
+    browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)]
+):
+    """Delete a browser session and cleanup resources"""
+    try:
+        await browser_manager.close_session(session_id)
+        return {"message": f"Session '{session_id}' deleted"}
+    except Exception as e:
+        logger.warning(f"Error cleaning up session {session_id}: {e}")
+        return {"message": f"Session '{session_id}' cleanup attempted with warnings"}
 
 # ===========================
 # Run the application

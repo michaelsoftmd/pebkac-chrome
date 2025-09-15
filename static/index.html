@@ -303,15 +303,14 @@
 
         .vnc-container {
             display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 500px;
+            flex: 1;
+            min-width: 640px;
+            min-height: 480px;
+            position: relative;
             background: linear-gradient(135deg, var(--card-bg) 0%, rgba(22, 22, 34, 0.8) 100%);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             margin: 0 auto;
-            max-width: 680px;
-            position: relative;
             overflow: hidden;
         }
 
@@ -362,14 +361,21 @@
         }
 
         #vnc-iframe {
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
+            width: 100%;
+            height: 100%;
+            border: none;
             background: black;
             display: none;
         }
 
         #vnc-iframe.active {
             display: block;
+        }
+
+        /* Ensure noVNC scales properly inside iframe */
+        .vnc-container iframe {
+            min-width: 640px;
+            min-height: 480px;
         }
 
         .logs-section {
@@ -579,10 +585,8 @@
                         <p>640 × 480 resolution</p>
                         <p>Click "Start VNC" to connect to remote desktop</p>
                     </div>
-                    <iframe 
-                        id="vnc-iframe" 
-                        width="650" 
-                        height="490"
+                    <iframe
+                        id="vnc-iframe"
                         src="about:blank">
                     </iframe>
                 </div>
@@ -615,6 +619,8 @@
         let eventSource = null;
         let logBuffer = [];
         const MAX_LOG_LINES = 1000;
+        let retryCount = 0;
+        let retryTimeout = null;
 
         // Initialize on load
         window.addEventListener('load', () => {
@@ -638,7 +644,7 @@
             vncActive = !vncActive;
             
             if (vncActive) {
-                iframe.src = 'http://localhost:6080/vnc.html?autoconnect=true';
+                iframe.src = 'http://localhost:6080/vnc.html?autoconnect=true&resize=scale&scale=true';
                 iframe.classList.add('active');
                 placeholder.style.display = 'none';
                 button.textContent = 'Restart VNC';
@@ -791,10 +797,25 @@
             };
             
             eventSource.onerror = (error) => {
-                addLogLine('CONNECTION: Log stream interrupted. Reconnecting...', 'warning');
+                if (retryTimeout) {
+                    clearTimeout(retryTimeout);
+                    retryTimeout = null;
+                }
+
+                if (retryCount < 5) {
+                    const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
+                    addLogLine(`CONNECTION: Retry in ${delay/1000}s...`, 'warning');
+                    retryTimeout = setTimeout(() => {
+                        connectToLogs(currentLogSource);
+                        retryCount++;
+                    }, delay);
+                } else {
+                    addLogLine('CONNECTION: Max retries reached. Click logs tab to reconnect.', 'error');
+                }
             };
             
             eventSource.onopen = () => {
+                retryCount = 0; // Reset retry count on successful connection
                 addLogLine(`CONNECTION: Connected to ${source} log stream`, 'info');
             };
         }

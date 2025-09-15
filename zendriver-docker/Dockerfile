@@ -78,7 +78,7 @@ RUN printf '#!/bin/bash\n\
 /entrypoint.sh "$@" &\n\
 MAIN_PID=$!\n\
 while ! nc -z localhost ${WAYVNC_PORT:-5910}; do sleep 1; done\n\
-websockify --web=/usr/share/novnc/ --cert=/certs/self.pem --key=/certs/self.key 6080 localhost:${WAYVNC_PORT:-5910} &\n\
+websockify --web=/usr/share/novnc/ 6080 localhost:${WAYVNC_PORT:-5910} &\n\
 wait $MAIN_PID\n' > /start-with-novnc.sh && chmod +x /start-with-novnc.sh
 
 ENTRYPOINT ["/start-with-novnc.sh"]
