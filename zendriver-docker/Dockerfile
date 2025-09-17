@@ -67,20 +67,32 @@ RUN mkdir -p /app/data /app/profiles /app/data/exports /app/tmp && \
 # Set PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
+# SWITCH TO ROOT 
 USER root
 
+# Install additional packages
 RUN apt-get update && \
     apt-get install -y novnc websockify netcat-openbsd && \
     rm -rf /var/lib/apt/lists/*
 
-# Create wrapper that starts the original entrypoint + websockify
+# Ensure profiles directory exists with correct permissions
+RUN mkdir -p /app/profiles/main_profile && \
+    chown -R chrome-user:chrome-user /app/profiles && \
+    chmod -R 755 /app/profiles
+
+# Create wrapper script
 RUN printf '#!/bin/bash\n\
+# Fix tmpfs permissions at startup\n\
+chown chrome-user:chrome-user /app/profiles 2>/dev/null || true\n\
+chmod 755 /app/profiles 2>/dev/null || true\n\
+# Rest of script...\n\
 /entrypoint.sh "$@" &\n\
 MAIN_PID=$!\n\
 while ! nc -z localhost ${WAYVNC_PORT:-5910}; do sleep 1; done\n\
 websockify --web=/usr/share/novnc/ 6080 localhost:${WAYVNC_PORT:-5910} &\n\
 wait $MAIN_PID\n' > /start-with-novnc.sh && chmod +x /start-with-novnc.sh
 
+# DO NOT SWITCH USER - Stay as root for entrypoint
 ENTRYPOINT ["/start-with-novnc.sh"]
 CMD [".venv/bin/python", "-m", "app.main"]
 

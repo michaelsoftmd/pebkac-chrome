@@ -1,237 +1,237 @@
-# app/core/browser.py
+# app/core/browser.py - COMPLETE REPLACEMENT
+
 import os
 import asyncio
 import logging
-import uuid
+import shutil
 from typing import Optional, Dict, Any
 from pathlib import Path
 import zendriver as zd
+from zendriver import cdp  # Import CDP for health check
 from app.core.timeouts import TIMEOUTS
 
 logger = logging.getLogger(__name__)
 
-# MODULE-LEVEL STATE - The key to persistent sessions
-_browser_pool: Dict[str, 'BrowserInstance'] = {}
-_pool_lock = asyncio.Lock()
-_default_browser = None
-
-class BrowserInstance:
-    """Wrapper for a browser session"""
-    def __init__(self, browser, tab, profile_dir, session_id):
-        self.browser = browser
-        self.tab = tab
-        self.profile_dir = profile_dir
-        self.session_id = session_id
-        self.last_used = asyncio.get_event_loop().time()
+# MODULE-LEVEL: Single browser instance
+_browser = None
+_browser_tab = None
+_browser_lock = asyncio.Lock()
 
 class BrowserManager:
-    """Manager that uses the global browser pool"""
+    """Manager for single persistent browser instance"""
 
     def __init__(self, settings):
         self.settings = settings
-        # NO instance-level browser storage!
+        self.profile_dir = Path(f"{settings.profiles_dir}/main_profile")
+        self.session_data_dir = Path("/app/session-data")
 
-    async def get_browser(self, session_id: Optional[str] = None):
-        """Get or create browser for session"""
-        global _browser_pool, _default_browser
+    async def get_browser(self):
+        """Get the single browser instance"""
+        global _browser, _browser_tab, _browser_lock
 
-        async with _pool_lock:
-            # Use default session if no ID provided
-            if not session_id:
-                if _default_browser and _default_browser.browser:
-                    # Test if browser is still alive
+        async with _browser_lock:
+            # Check if browser exists and is alive
+            if _browser:
+                try:
+                    # Simple health check - try to access tabs property
+                    _ = _browser.tabs  # This should work if browser is alive
+                    logger.debug("Browser instance is alive")
+                    return _browser
+                except Exception as e:
+                    logger.warning(f"Browser appears dead: {e}, recreating...")
                     try:
-                        await _default_browser.browser.execute_cdp_cmd("Browser.getVersion", {})
-                        logger.info("Reusing default browser instance")
-                        return _default_browser.browser
+                        await _browser.close()
                     except:
-                        # Browser is dead, clean up
-                        _default_browser = None
+                        pass
+                    _browser = None
+                    _browser_tab = None
 
-                # Create default browser
-                logger.info("Creating default browser instance")
-                browser = await self._create_browser("default")
-                _default_browser = browser
-                return browser.browser
+            # Create browser if needed
+            logger.info("Creating persistent browser instance")
+            _browser = await self._create_browser()
+            return _browser
 
-            # Check if session exists
-            if session_id in _browser_pool:
-                instance = _browser_pool[session_id]
-                if instance.browser:
-                    # Test if browser is still alive
-                    try:
-                        await instance.browser.execute_cdp_cmd("Browser.getVersion", {})
-                        logger.info(f"Reusing browser for session: {session_id}")
-                        instance.last_used = asyncio.get_event_loop().time()
-                        return instance.browser
-                    except:
-                        # Browser is dead, clean up
-                        logger.warning(f"Browser for session {session_id} is dead, recreating")
-                        del _browser_pool[session_id]
+    async def get_tab(self):
+        """Get the current tab - ALWAYS reuse the same one"""
+        global _browser_tab
 
-            # Create new browser for session
-            logger.info(f"Creating new browser for session: {session_id}")
-            instance = await self._create_browser(session_id)
-            _browser_pool[session_id] = instance
-            return instance.browser
+        browser = await self.get_browser()
 
-    async def get_tab(self, session_id: Optional[str] = None):
-        """Get current tab for session"""
-        global _browser_pool, _default_browser
+        # If we have a tab, use it
+        if _browser_tab:
+            try:
+                await _browser_tab.evaluate("1")
+                return _browser_tab
+            except:
+                logger.debug("Tab reference invalid")
+                _browser_tab = None
 
-        browser = await self.get_browser(session_id)
+        # Get the EXISTING tab from browser
+        tabs = browser.tabs  # This is a property, not awaitable
+        if tabs and len(tabs) > 0:
+            _browser_tab = tabs[0]
+            logger.info("Using existing browser tab")
+            return _browser_tab
 
-        # Get the instance to access the tab
-        if not session_id:
-            instance = _default_browser
-        else:
-            instance = _browser_pool.get(session_id)
+        # This should rarely happen - only on first startup
+        logger.info("Creating initial tab")
+        _browser_tab = await browser.new_tab("about:blank")
+        return _browser_tab
 
-        if instance and instance.tab:
-            return instance.tab
+    async def _create_browser(self):
+        """Create browser with persistent session data"""
+        # Kill any zombie Chrome processes first
+        try:
+            os.system("pkill -f 'chrome.*--user-data-dir=/app/profiles/main_profile' 2>/dev/null")
+            await asyncio.sleep(0.5)  # Give it time to die
+        except:
+            pass
 
-        # Create new tab if needed
-        tab = await browser.get("about:blank")
-        if instance:
-            instance.tab = tab
-        return tab
+        # Ensure directories exist
+        self.profile_dir.mkdir(parents=True, exist_ok=True)
+        self.session_data_dir.mkdir(parents=True, exist_ok=True)
 
-    async def _create_browser(self, session_id: str):
-        """Create a new browser instance"""
-        # Handle session prefix correctly
-        if session_id.startswith("session_"):
-            profile_name = session_id
-        else:
-            profile_name = f"session_{session_id}"
+        # Restore session data if exists
+        await self._restore_session_data()
 
-        profile_dir = Path(f"{self.settings.profiles_dir}/{profile_name}")
-        profile_dir.mkdir(parents=True, exist_ok=True)
-
-        # Clean any stale locks
-        await self._clean_stale_locks(profile_dir)
-
-        # Docker-compatible browser args
-        enhanced_args = self.settings.browser_args.copy()
-        enhanced_args.extend([
+        # Browser arguments for Docker environment
+        browser_args = self.settings.browser_args.copy()
+        browser_args.extend([
             "--no-sandbox",
             "--disable-setuid-sandbox",
             "--disable-dev-shm-usage",
             "--disable-gpu-sandbox",
             "--disable-features=site-per-process",
+            "--password-store=basic",  # Store passwords in profile
         ])
 
-        # Create browser with profile
+        # Start browser with persistent profile
         browser = await zd.start(
             headless=self.settings.browser_headless,
-            browser_args=enhanced_args,
-            user_data_dir=str(profile_dir)
+            browser_args=browser_args,
+            user_data_dir=str(self.profile_dir)
         )
 
-        tab = await browser.get("about:blank")
+        logger.info(f"Browser started with hybrid profile: {self.profile_dir}")
+        return browser
 
-        return BrowserInstance(
-            browser=browser,
-            tab=tab,
-            profile_dir=profile_dir,
-            session_id=session_id
-        )
-
-    async def _clean_stale_locks(self, profile_path: Path):
-        """Clean stale Chrome lock files for container restarts"""
+    async def _restore_session_data(self):
+        """Restore cookies and key data from persistent storage"""
         try:
-            lock_files = [
-                profile_path / "SingletonLock",
-                profile_path / "SingletonSocket",
-                profile_path / "SingletonCookie"
+            # Key files to preserve between restarts
+            preserve_files = [
+                "Cookies",
+                "Cookies-journal",
+                "Login Data",
+                "Login Data-journal",
+                "Web Data",
+                "Extension Cookies",
+                "Extension State",
+                "Preferences",
+                "Local Storage/",
+                "Session Storage/",
+                "IndexedDB/"
             ]
 
-            for lock_file in lock_files:
-                if lock_file.exists():
-                    try:
-                        lock_file.unlink()
-                        logger.info(f"Cleaned stale lock file: {lock_file}")
-                    except Exception as e:
-                        logger.warning(f"Could not remove {lock_file}: {e}")
+            # Copy from persistent storage to tmpfs profile
+            for file_pattern in preserve_files:
+                source = self.session_data_dir / file_pattern
+                dest = self.profile_dir / file_pattern
+
+                if source.exists():
+                    if source.is_dir():
+                        shutil.copytree(source, dest, dirs_exist_ok=True)
+                    else:
+                        dest.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(source, dest)
+                    logger.debug(f"Restored: {file_pattern}")
+
+            logger.info("Session data restored from persistent storage")
 
         except Exception as e:
-            logger.warning(f"Error cleaning stale locks: {e}")
+            logger.warning(f"Could not restore session data: {e}")
+
+    async def save_session_data(self):
+        """Save session data to persistent storage"""
+        try:
+            # Same files as restore
+            preserve_files = [
+                "Cookies",
+                "Cookies-journal",
+                "Login Data",
+                "Login Data-journal",
+                "Web Data",
+                "Extension Cookies",
+                "Extension State",
+                "Preferences",
+                "Local Storage/",
+                "Session Storage/",
+                "IndexedDB/"
+            ]
+
+            # Copy from tmpfs to persistent storage
+            for file_pattern in preserve_files:
+                source = self.profile_dir / file_pattern
+                dest = self.session_data_dir / file_pattern
+
+                if source.exists():
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    if source.is_dir():
+                        shutil.copytree(source, dest, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(source, dest)
+                    logger.debug(f"Saved: {file_pattern}")
+
+            logger.info("Session data saved to persistent storage")
+
+        except Exception as e:
+            logger.error(f"Could not save session data: {e}")
 
     async def navigate(self, url: str, wait_for: Optional[str] = None,
-                      wait_timeout: int = TIMEOUTS.element_find,
-                      session_id: Optional[str] = None) -> Dict[str, Any]:
-        """Navigate to URL using zendriver's native navigation"""
-        tab = await self.get_tab(session_id)
+                      wait_timeout: int = TIMEOUTS.element_find) -> Dict[str, Any]:
+        """Navigate to URL in the persistent tab"""
+        tab = await self.get_tab()
 
         try:
-            # Navigate using tab
             await tab.get(url)
 
-            # Wait for specific element if requested
             if wait_for:
                 try:
                     await tab.find(wait_for, timeout=wait_timeout)
                     logger.info(f"Found wait_for element: {wait_for}")
-                except Exception as e:
-                    logger.warning(f"Wait element not found: {wait_for}, continuing anyway")
+                except:
+                    logger.warning(f"Wait element not found: {wait_for}")
 
-            # Get final URL after navigation (handles redirects)
-            final_url = await tab.evaluate("window.location.href")
+            # Get current state
+            current_url = await tab.evaluate("window.location.href")
+            title = await tab.evaluate("document.title")
 
             return {
                 "status": "success",
-                "url": final_url,
-                "title": await tab.evaluate("document.title") or "No title"
+                "url": current_url or url,
+                "title": title or "Untitled"
             }
 
         except Exception as e:
             logger.error(f"Navigation error: {e}")
             raise
 
-    async def close_session(self, session_id: str):
-        """Close and clean up a specific session"""
-        global _browser_pool, _default_browser
+    async def cleanup(self):
+        """Graceful shutdown - saves session state"""
+        global _browser, _browser_tab
 
-        async with _pool_lock:
-            if session_id == "default" and _default_browser:
-                try:
-                    if _default_browser.browser:
-                        await _default_browser.browser.close()
-                except:
-                    pass
-                _default_browser = None
-                logger.info("Closed default browser session")
+        # Save session data before closing
+        try:
+            await self.save_session_data()
+        except Exception as e:
+            logger.error(f"Failed to save session data: {e}")
 
-            elif session_id in _browser_pool:
-                instance = _browser_pool[session_id]
-                try:
-                    if instance.browser:
-                        await instance.browser.close()
-                except:
-                    pass
-                del _browser_pool[session_id]
-                logger.info(f"Closed browser session: {session_id}")
-
-    async def cleanup_all(self):
-        """Clean up all browser sessions"""
-        global _browser_pool, _default_browser
-
-        async with _pool_lock:
-            # Close default browser
-            if _default_browser:
-                try:
-                    if _default_browser.browser:
-                        await _default_browser.browser.close()
-                except:
-                    pass
-                _default_browser = None
-
-            # Close all session browsers
-            for session_id, instance in _browser_pool.items():
-                try:
-                    if instance.browser:
-                        await instance.browser.close()
-                except:
-                    pass
-
-            _browser_pool.clear()
-            logger.info("Cleaned up all browser sessions")
+        if _browser:
+            try:
+                logger.info("Closing browser gracefully...")
+                await _browser.close()
+            except:
+                pass
+            finally:
+                _browser = None
+                _browser_tab = None

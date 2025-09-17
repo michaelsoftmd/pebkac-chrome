@@ -78,15 +78,32 @@ async def stream_logs(container: str):
                     pass
         
         try:
+            # First check if container exists and is running
+            check_proc = await asyncio.create_subprocess_exec(
+                'podman', 'ps', '--format', 'json', '--filter', f'name={container}',
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            stdout, stderr = await check_proc.communicate()
+
+            if check_proc.returncode != 0:
+                yield f"data: {json.dumps({'message': f'Container {container} not found or not running', 'level': 'error'})}\n\n"
+                return
+
+            containers = json.loads(stdout.decode()) if stdout.strip() else []
+            if not containers:
+                yield f"data: {json.dumps({'message': f'Container {container} is not running', 'level': 'error'})}\n\n"
+                return
+
             # Start podman logs process
             proc = await asyncio.create_subprocess_exec(
                 'podman', 'logs', '-f', '--tail', '100', container,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT
             )
-            
+
             log_processes[container] = proc
-            
+
             # Send initial connection message
             yield f"data: {json.dumps({'message': f'Connected to {container} logs', 'level': 'info'})}\n\n"
             
@@ -187,6 +204,55 @@ async def stop_all_containers():
         }
     except Exception as e:
         logger.error(f"Error stopping containers: {e}")
+        return {
+            "status": "error",
+            "message": str(e)
+        }
+
+@app.post("/api/control/create-network")
+async def create_network():
+    """Create the podman network for containers"""
+    try:
+        logger.info("Creating podman network...")
+
+        result = subprocess.run(
+            ['podman', 'network', 'create',
+             '--driver', 'bridge',
+             '--subnet', '172.20.0.0/16',
+             'podman_llm-network'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+
+        if result.returncode == 0:
+            return {
+                "status": "success",
+                "message": "Network created successfully",
+                "output": result.stdout
+            }
+        else:
+            # Network might already exist
+            if "already exists" in result.stderr.lower():
+                return {
+                    "status": "success",
+                    "message": "Network already exists",
+                    "output": result.stderr
+                }
+            else:
+                return {
+                    "status": "error",
+                    "message": "Failed to create network",
+                    "error": result.stderr
+                }
+
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "error",
+            "message": "Network creation timed out"
+        }
+    except Exception as e:
+        logger.error(f"Error creating network: {e}")
         return {
             "status": "error",
             "message": str(e)

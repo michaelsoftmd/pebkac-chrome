@@ -152,7 +152,10 @@ services:
     volumes:
       - swayvnc-wayvnc-certs:/certs        # Keep - needed for VNC
       - zendriver-data:/app/data            # Keep - for database
-      - browser-profiles:/app/profiles      # Keep - for browser profiles
+      # Runtime session data (cookies, logins) - persistent storage
+      - /mnt/ssd/podman/browser-session-data:/app/session-data:rw
+    tmpfs:
+      - /app/profiles:uid=1000,gid=1000,mode=755  # Working profile in memory
     environment:
       - RENDER_GROUP_GID=992
       - SWAY_RESOLUTION=640x480

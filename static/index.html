@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZENBOT - Chrome Automation System</title>
+    <title>ZENBOT - Chrome Nonautomation System</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -366,6 +366,9 @@
             border: none;
             background: black;
             display: none;
+            pointer-events: auto;
+            position: relative;
+            z-index: 1;
         }
 
         #vnc-iframe.active {
@@ -562,7 +565,7 @@
         <div class="header">
             <div class="zenbot-logo">
                 <div class="zenbot-title">ZENBOT</div>
-                <div class="zenbot-subtitle">Chrome Automation System</div>
+                <div class="zenbot-subtitle">Chrome Nonautomation System</div>
             </div>
             <div class="controls">
                 <button id="compose-up" class="btn btn-boot" onclick="composeUp()">Boot System</button>
@@ -604,7 +607,7 @@
                 </div>
 
                 <div id="log-viewer" class="log-viewer">
-                    <div class="log-line info">ZENBOT Chrome Automation System - Initializing...</div>
+                    <div class="log-line info">ZENBOT Chrome Nonautomation System - Initializing...</div>
                     <div class="log-line info">System components loading...</div>
                     <div class="log-line info">Ready for operation</div>
                     <div class="log-line warning">Connecting to log streams...</div>
@@ -621,10 +624,33 @@
         const MAX_LOG_LINES = 1000;
         let retryCount = 0;
         let retryTimeout = null;
+        let shouldReconnect = true;
 
         // Initialize on load
         window.addEventListener('load', () => {
             connectToLogs(currentLogSource);
+        });
+
+        // Clean up connections when page is closed or hidden
+        window.addEventListener('beforeunload', () => {
+            if (eventSource) {
+                eventSource.close();
+            }
+            if (retryTimeout) {
+                clearTimeout(retryTimeout);
+            }
+        });
+
+        // Stop reconnecting when page becomes hidden (user switches tabs/minimizes)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                shouldReconnect = false;
+                if (retryTimeout) {
+                    clearTimeout(retryTimeout);
+                    retryTimeout = null;
+                }
+                addLogLine('CONNECTION: Stopped reconnecting (page hidden)', 'info');
+            }
         });
 
         function toggleTheme() {
@@ -654,7 +680,14 @@
                 setTimeout(() => {
                     updateStatus('connected');
                     addLogLine('VNC: Connection established', 'info');
+                    // Ensure iframe can receive focus and events
+                    iframe.focus();
                 }, 2000);
+
+                // Add click handler to ensure iframe gets focus
+                iframe.addEventListener('click', () => {
+                    iframe.focus();
+                });
             } else {
                 iframe.src = 'about:blank';
                 iframe.classList.remove('active');
@@ -707,12 +740,30 @@
             const button = document.getElementById('compose-up');
             button.disabled = true;
             button.textContent = 'Starting...';
-            addLogLine('SYSTEM: Starting service stack...', 'info');
-            
+
+            // Re-enable log reconnection when starting services
+            shouldReconnect = true;
+            retryCount = 0;
+
+            addLogLine('SYSTEM: Creating network infrastructure...', 'info');
+
             try {
+                // First create the network
+                const networkResponse = await fetch('/api/control/create-network', { method: 'POST' });
+                const networkResult = await networkResponse.json();
+
+                if (networkResult.status === 'success') {
+                    addLogLine('SYSTEM: Network created successfully', 'info');
+                } else {
+                    addLogLine('SYSTEM: Network already exists or created', 'warning');
+                }
+
+                addLogLine('SYSTEM: Starting service stack...', 'info');
+
+                // Then start the services
                 const response = await fetch('/api/control/compose-up', { method: 'POST' });
                 const result = await response.json();
-                
+
                 if (result.status === 'success') {
                     addLogLine('SYSTEM: All services started successfully', 'info');
                 } else {
@@ -802,15 +853,25 @@
                     retryTimeout = null;
                 }
 
-                if (retryCount < 5) {
+                // If we've failed multiple times, assume containers are stopped
+                if (retryCount >= 3) {
+                    shouldReconnect = false;
+                    addLogLine('CONNECTION: Containers appear to be stopped. Reconnection disabled.', 'error');
+                    return;
+                }
+
+                if (retryCount < 5 && shouldReconnect) {
                     const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
                     addLogLine(`CONNECTION: Retry in ${delay/1000}s...`, 'warning');
                     retryTimeout = setTimeout(() => {
-                        connectToLogs(currentLogSource);
-                        retryCount++;
+                        if (shouldReconnect) {
+                            connectToLogs(currentLogSource);
+                            retryCount++;
+                        }
                     }, delay);
                 } else {
-                    addLogLine('CONNECTION: Max retries reached. Click logs tab to reconnect.', 'error');
+                    shouldReconnect = false;
+                    addLogLine('CONNECTION: Max retries reached. Containers may be stopped.', 'error');
                 }
             };
             

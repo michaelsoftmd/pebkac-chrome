@@ -33,11 +33,11 @@ SMOLAGENTS_USE_LOCAL_LLM=true
 SMOLAGENTS_USE_CODE_AGENT=true
 SMOLAGENTS_MAX_STEPS=15
 
-# Timeout Configuration (seconds) - Short timeouts prevent context overflow
-TIMEOUT_ELEMENT_FIND=3
-TIMEOUT_HTTP_REQUEST=5
-TIMEOUT_HTTP_EXTRACTION=8  
-TIMEOUT_PAGE_LOAD=10
+# Timeout Configuration (seconds) - Balanced timeouts for reliability
+TIMEOUT_ELEMENT_FIND=8
+TIMEOUT_HTTP_REQUEST=15
+TIMEOUT_HTTP_EXTRACTION=20
+TIMEOUT_PAGE_LOAD=25
 
 # Service URLs
 ZENDRIVER_API_URL=http://zendriver:8080
