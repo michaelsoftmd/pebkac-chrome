@@ -659,7 +659,7 @@
             vncActive = !vncActive;
             
             if (vncActive) {
-                iframe.src = 'http://localhost:6080/vnc.html?autoconnect=true&resize=scale&scale=true';
+                iframe.src = 'http://localhost:6080/vnc.html?autoconnect=true&resize=scale&view_clip=1';
                 iframe.classList.add('active');
                 placeholder.style.display = 'none';
                 button.textContent = 'Restart VNC';
@@ -837,7 +837,16 @@
             eventSource.onmessage = (event) => {
                 consecutiveFailures = 0;  // Reset on successful message
                 const data = JSON.parse(event.data);
-                addLogLine(data.message, data.level || 'info');
+
+                // Detect if this is a new step/action
+                const isNewStep = data.message.includes('Starting') ||
+                                  data.message.includes('Executing') ||
+                                  data.message.includes('Step') ||
+                                  data.message.includes('CONNECTION:') ||
+                                  data.message.includes('SYSTEM:') ||
+                                  data.level === 'error';
+
+                addLogLine(data.message, data.level || 'info', isNewStep);
             };
 
             eventSource.onerror = (error) => {
@@ -878,24 +887,28 @@
             };
         }
 
-        function addLogLine(message, level = 'info') {
+        function addLogLine(message, level = 'info', showTimestamp = false) {
             const viewer = document.getElementById('log-viewer');
             const line = document.createElement('div');
             line.className = `log-line ${level}`;
-            
-            // Add timestamp
-            const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-            line.textContent = `[${timestamp}] ${message}`;
-            
+
+            // Only add timestamp for significant events
+            if (showTimestamp) {
+                const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false });
+                line.textContent = `[${timestamp}] ${message}`;
+            } else {
+                line.textContent = message;
+            }
+
             logBuffer.push({ message, level, timestamp: new Date() });
-            
+
             if (logBuffer.length > MAX_LOG_LINES) {
                 logBuffer.shift();
                 if (viewer.firstChild) {
                     viewer.removeChild(viewer.firstChild);
                 }
             }
-            
+
             viewer.appendChild(line);
             viewer.scrollTop = viewer.scrollHeight;
         }

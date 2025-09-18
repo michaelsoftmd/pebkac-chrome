@@ -158,7 +158,7 @@ services:
       - /app/profiles:uid=1000,gid=1000,mode=755  # Working profile in memory
     environment:
       - RENDER_GROUP_GID=992
-      - SWAY_RESOLUTION=640x480
+      - SWAY_RESOLUTION=${SWAY_RESOLUTION:-640x480}
       - WAYVNC_PORT=5910
       - WAYVNC_ENABLE_AUTH=false
       - MESA_LOADER_DRIVER_OVERRIDE=radeonsi
