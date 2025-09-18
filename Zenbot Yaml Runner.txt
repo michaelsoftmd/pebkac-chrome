@@ -1,0 +1,98 @@
+# INITIAL SETUP INSIDE PODMAN/DOCKER
+
+# Make working storage directories
+mkdir -p /your/podman/location/zendriver-data
+mkdir -p /your/podman/location/duckdb-data
+mkdir -p /your/podman/location/webui-data # or whatever your webui folder is called)
+7 3
+# and these too, maybe. I'm not sure about them:
+mkdir tmp
+mkdir cache
+mkdir browser-profiles
+hell u might need more profiles things. ive got browser-session-data. i think that's right.
+mkdir shared
+mkdir storage - this is where most stuff goes, and you dont have permission to access most of it
+
+# NEXT! Open terminal in Podman directory. To run this setup, you will almost ALWAYS need to run commands from this directory. Very important!
+
+# Build each individually to make sure there are no errors.
+podman build --network=host --no-cache -t openapi-tools ./openapi-server
+
+podman build --network=host --no-cache -t zendriver ./zendriver-docker
+
+podman build --network=host --no-cache -t duckdb-cache ./duckdb-service
+
+# FIRST TIME START - INSTALLS ZENBOT VIRTUAL ENVIRONMENT
+# Create network 
+podman network create \
+  --driver bridge \
+  --subnet 172.20.0.0/16 \
+  podman_llm-network
+
+# Start service
+podman compose --profile full up -d
+
+# Start Zenbot
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python main.py
+
+# GENERAL USE - RUN THIS COMMAND IN YOUR PODMAN DIR
+python3 -m venv venv
+source venv/bin/activate
+python main.py
+
+# connect to localhost:8888 for Zenbot Control Panel!
+
+
+
+# If needed, remove network first
+podman network rm podman_llm-network
+
+# View direct logs:
+podman logs -f openapi-tools
+podman logs -f zendriver
+
+# Stop/clean up service
+podman stop -a
+podman rm -a
+podman network rm podman_llm-network
+
+# Other important commands:
+podman logs -f openapi-tools 
+podman logs -f zendriver
+podman logs -f open-webui
+podman logs -f llama-cpp-server
+podman logs -f duckdb-cache
+podman logs -f redis-cache
+podman ps -a
+podman images -a
+podman stats
+radeontop
+
+podman cp podman_zendriver:/tmp/ /exports
+
+
+
+# ADDITIONAL IMPORTANT NOTES
+# The included docker-compose refers to a specific Llama.cpp build. I left that there so you can see how it works or just drop in your own setup at will. 
+
+# I have included a Dockerfile for a Podman-based Llama.cpp w/Vulkan build. To use, rename that file to Dockerfile, place in a folder "llama-vulan" in Podman working dir, cd to llama-vulkan, and run:
+podman build -t llama-vulkan .
+
+
+# Junk for multibot later
+suggestions:
+Now you can properly trigger both browsers:
+  # In Open WebUI, try:
+  "Use open_multiple_browsers with count=2, then navigate_session Browser_1 to google.com and navigate_session 
+  Browser_2 to wikipedia.org"
+multibot may require readding:
+          "--single-process",
+          "--no-zygote",
+and disabling session persistence
+
+
+
+
