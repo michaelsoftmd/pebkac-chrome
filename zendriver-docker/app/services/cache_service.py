@@ -72,14 +72,30 @@ class ExtractorCacheService:
                     for key in keys:
                         # Get the count for this selector
                         count = await self.cache.redis_client.get(key)
-                        
+
                         # Extract selector hash from key
                         # Key format: "selector:domain:works:hash"
                         key_str = str(key) if hasattr(key, 'decode') else key
                         if hasattr(key_str, 'decode'):
                             key_str = key_str.decode('utf-8')
                         selector_hash = key_str.split(':')[-1]
-                        selectors[selector_hash] = int(count) if count else 0
+
+                        # Handle both pickle and int formats
+                        if count:
+                            try:
+                                # Try unpickling first (new format)
+                                import pickle
+                                count = pickle.loads(count)
+                            except:
+                                try:
+                                    # Fall back to int (old format)
+                                    count = int(count)
+                                except:
+                                    count = 0
+                        else:
+                            count = 0
+
+                        selectors[selector_hash] = count
                     
                     if cursor == 0:
                         break

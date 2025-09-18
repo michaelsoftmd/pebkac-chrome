@@ -641,17 +641,6 @@
             }
         });
 
-        // Stop reconnecting when page becomes hidden (user switches tabs/minimizes)
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                shouldReconnect = false;
-                if (retryTimeout) {
-                    clearTimeout(retryTimeout);
-                    retryTimeout = null;
-                }
-                addLogLine('CONNECTION: Stopped reconnecting (page hidden)', 'info');
-            }
-        });
 
         function toggleTheme() {
             // Simple theme toggle effect
@@ -839,44 +828,52 @@
             if (eventSource) {
                 eventSource.close();
             }
-            
+
+            let consecutiveFailures = 0;
+            const maxConsecutiveFailures = 3;
+
             eventSource = new EventSource(`/api/logs/${source}`);
-            
+
             eventSource.onmessage = (event) => {
+                consecutiveFailures = 0;  // Reset on successful message
                 const data = JSON.parse(event.data);
                 addLogLine(data.message, data.level || 'info');
             };
-            
+
             eventSource.onerror = (error) => {
                 if (retryTimeout) {
                     clearTimeout(retryTimeout);
                     retryTimeout = null;
                 }
 
-                // If we've failed multiple times, assume containers are stopped
-                if (retryCount >= 3) {
+                consecutiveFailures++;
+
+                // Stop retrying after too many consecutive failures
+                if (consecutiveFailures >= maxConsecutiveFailures) {
+                    eventSource.close();
+                    addLogLine(`Container ${source} appears to be stopped`, 'info');
                     shouldReconnect = false;
-                    addLogLine('CONNECTION: Containers appear to be stopped. Reconnection disabled.', 'error');
                     return;
                 }
 
-                if (retryCount < 5 && shouldReconnect) {
-                    const delay = Math.min(1000 * Math.pow(2, retryCount), 30000);
-                    addLogLine(`CONNECTION: Retry in ${delay/1000}s...`, 'warning');
+                // Only show "Connecting" message on first failure
+                if (consecutiveFailures === 1) {
+                    addLogLine(`CONNECTION: Connecting to ${source}...`, 'info');
+                }
+
+                if (shouldReconnect) {
+                    // Exponential backoff
+                    const delay = Math.min(1000 * Math.pow(2, consecutiveFailures), 10000);
                     retryTimeout = setTimeout(() => {
                         if (shouldReconnect) {
-                            connectToLogs(currentLogSource);
-                            retryCount++;
+                            connectToLogs(source);
                         }
                     }, delay);
-                } else {
-                    shouldReconnect = false;
-                    addLogLine('CONNECTION: Max retries reached. Containers may be stopped.', 'error');
                 }
             };
-            
+
             eventSource.onopen = () => {
-                retryCount = 0; // Reset retry count on successful connection
+                consecutiveFailures = 0;  // Reset on successful connection
                 addLogLine(`CONNECTION: Connected to ${source} log stream`, 'info');
             };
         }

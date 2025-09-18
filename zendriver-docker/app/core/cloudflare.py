@@ -98,8 +98,8 @@ async def cf_wait_for_interactive_challenge(
             return host_element, shadow_root_element, challenge_iframe
         await asyncio.sleep(0.5)
 
-    logger.warning(
-        f"Timeout: Cloudflare challenge elements not found or not visible within {timeout} seconds."
+    logger.debug(
+        f"Cloudflare challenge elements not found within {timeout} seconds."
     )
     return None, None, None
 

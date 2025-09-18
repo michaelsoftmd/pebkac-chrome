@@ -24,7 +24,7 @@ from app.core.browser import BrowserManager
 from app.core.database import DatabaseManager, init_db, get_db
 from app.core.exceptions import BrowserError, ElementNotFoundError
 from app.core.timeouts import TIMEOUTS
-from app.models.requests import NavigationRequest, ClickRequest, SubstackPublicationRequest
+from app.models.requests import NavigationRequest, ClickRequest, SubstackPublicationRequest, ExtractionRequestComplete
 from app.services.element import ElementService
 from app.services.substack import SubstackService
 from app.services.cache_service import ExtractorCacheService
@@ -495,14 +495,47 @@ async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
 
             # Scroll iframe into view
             await anchor_frame.scroll_into_view()
+            await asyncio.sleep(0.5)  # Wait for scroll to complete
+
+            # Re-find the element to get fresh node ID after scroll
+            anchor_frame = None
+            for selector in iframe_selectors:
+                try:
+                    anchor_frame = await tab.find(selector, timeout=2)
+                    if anchor_frame:
+                        break
+                except:
+                    continue
+
+            if not anchor_frame:
+                return False, "reCAPTCHA iframe disappeared after scroll"
 
             # Get the iframe's box model for precise clicking
             from zendriver import cdp
 
             logger.debug(f"Getting box model for reCAPTCHA iframe (node_id: {anchor_frame.node.node_id})")
-            box_model_result = await tab.send(
-                cdp.dom.get_box_model(node_id=anchor_frame.node.node_id)
-            )
+            try:
+                box_model_result = await tab.send(
+                    cdp.dom.get_box_model(node_id=anchor_frame.node.node_id)
+                )
+            except Exception as e:
+                if "Could not find node" in str(e):
+                    # Try alternative approach - click by position
+                    try:
+                        logger.warning("Node ID stale, trying alternative position method")
+                        pos = await anchor_frame.get_position()
+                        if pos:
+                            click_x = pos.center[0] * 0.15  # 15% from left
+                            click_y = pos.center[1]
+                            await tab.mouse_click(click_x, click_y)
+                            logger.info("reCAPTCHA clicked using alternative position method")
+                            await asyncio.sleep(2)
+                            return True, "Clicked using alternative position method"
+                    except Exception as alt_e:
+                        logger.error(f"Alternative click method failed: {alt_e}")
+                    return False, f"Click failed: {str(e)}"
+                else:
+                    raise
 
             # Extract coordinates from content quad
             content_quad = box_model_result.content
@@ -1002,20 +1035,20 @@ async def parallel_extraction(
 async def extract_content(
     browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
     cache_service: Annotated[ExtractorCacheService, Depends(get_cache_service)],
-    request: Dict[str, Any] = Body(...)
+    request: ExtractionRequestComplete
 ):
     """Universal extraction with caching support"""
     service = UnifiedExtractionService(browser_manager, cache_service)
     
     # Use the service's extract method
     result = await service.extract(
-        selector=request.get("selector"),
-        xpath=request.get("xpath"),
-        extract_all=request.get("extract_all", False),
-        extract_text=request.get("extract_text", True),
-        extract_href=request.get("extract_href", False),
-        use_cache=not request.get("force_refresh", False),
-        include_metadata=True
+        selector=request.selector,
+        xpath=request.xpath,
+        extract_all=request.extract_all,
+        extract_text=request.extract_text,
+        extract_href=request.extract_href,
+        use_cache=request.use_cache,
+        include_metadata=request.include_metadata
     )
     
     # Return the result which already includes formatted_output for Open WebUI

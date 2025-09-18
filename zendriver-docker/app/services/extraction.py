@@ -541,7 +541,7 @@ class UnifiedExtractionService:
         try:
             from app.core.cloudflare import cf_is_interactive_challenge_present
             
-            if await cf_is_interactive_challenge_present(tab, timeout=2):
+            if await cf_is_interactive_challenge_present(tab, timeout=5):
                 # Try to solve it
                 from app.core.cloudflare import verify_cf
                 try:
