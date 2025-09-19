@@ -1,4 +1,4 @@
-﻿# Zenbot: AI-Powered Web Automaton Without the Automation
+﻿# Zenbot: The AI-Powered Web Automaton Without The Automation
 
 ## **What This Is**
 
