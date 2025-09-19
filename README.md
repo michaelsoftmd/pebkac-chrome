@@ -4,7 +4,7 @@
 
 UNRELATED TO THE OTHER ZENBOT PROJECT! This project shares NO RELATION WHATSOEVER to any other Zenbot-named repository that can be found online. This project was named after its originally forked project, Zendriver.
 
-Fundamentally, this project is an AI pet in a sandboxed Podman environment. Once I made the environment I wanted to give it something to do, so I created Zenbot. Zenbot is a web nonautomation framework powered by Smolagents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant orchestration of English language-powered Python interpretation driven by you, the user.
+Fundamentally, Zenbot is an AI pet in a sandboxed Podman environment. Once I made the environment I wanted to give it something to do, so I created Zenbot. Zenbot is a web nonautomation framework powered by Smolagents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant orchestration of English language-powered Python interpretation driven by you, the user.
 
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
 - Smolagents is "a barebones library for agents that think in code."
@@ -53,6 +53,10 @@ Here's what it does:
 - Validates inputs! I’ve done much to ensure there is little to no risk from Javascript or SQL injection. Please be careful. I made sure to do this based on an XKCD comic strip I saw in high school: https://m.xkcd.com/327/
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
+Here’s what needs work:
+- Caching, memory, more functionality.
+- This section
+
 This version of Zenbot is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating Zenbot, I would HIGHLY recommend using David_AU’s finetunes, particularly the Brainstorm variants. I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. Not only do they know to operate Zenbot nearly 100% of the time, but they seem to have been finetuned on the Smolagents library, making much of the ‘thinking’ already integrated.
 
 I would also highly recommend adjusting the extraction method to extract more text, and altering llama.cpp’s GPU usage in the .env file. That will truly allow Zenbot to work its magic.
@@ -67,34 +71,28 @@ For full disclosure, I am a writer, not a developer. I barely know print hello w
 
 What I have learned more than anything is that my very basic hardware cannot handle LLMs very well. I have made sure every part of this project is as lightweight and fast as possible. If you choose to support me by donating, that money would first and foremost go towards making this project harder, better, stronger, and faster. I’d also like to direct you to my Amazon page, because on God, writing books doesn't make money. My novel **[Well's Rest](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)** is on **[Amazon](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)**.
 
-Zenbot might even be able to buy3333333333 it for you.
+Zenbot might even be able to buy it for you.
 
 It will definitely be able to find me on Royal Road:
 https://www.royalroad.com/fiction/126900/wells-rest-grimdark-pirate-action-watch-book-trailer
 
-<br>
-</br>
+I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, fine-tuned models are the future for operating untold new and old technologies. I am also of the opinion completely that LLMs should not be creating stories. Creating stories is for humans. Let LLMs build the vehicles for us to tell stories in. The simple act of creation engages our minds at a level of meaning LLMs cannot reach, because truth emerges from the deeply personal refinement of meaning from life’s slop. LLMs, for all their value, produce only slop. Nothing can produce meaningful words but you.
 
-I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, fine-tuned models are the future for operating untold new and old technologies. I am also of the opinion completely that LLMs should not be creating stories. Creating stories is for humans. Let LLMs build the vehicles for us to tell stories in. The simple act of creation engages our minds at a level of meaning LLMs cannot reach, because truth emerges from the deeply personal refinement of meaning from life’s slop. LLMs, for all their value, produce only slop. No-one can produce meaningful words but you.
-
-Check out my website at www.akickintheteeth.com. That is where I've been documenting my other experiments with AI. It's a brave new world! I’ve been following NLP since the beginning.
+Check out my website at www.akickintheteeth.com. That is where I've been documenting my other experiments with AI. It's a brave new world!
 
 <br>
 </br>
-
-
-
-
 
 ## **Getting Started**
 ### **Requirements:**
-- **Podman or Docker** Everything is built on a containerisation layer, so you don't have to worry about security. Install Podman.
+- **Podman or Docker** Install Podman. This is vital. I use a custom storage directory for my Podman setup. 
+- 
 
 ### **Initial Setup**
 - Open the Zenbot Yaml Runner.
-- Install podman and podman-compose, or docker and docker-compose. I used Podman, so I will refer to that through this guide. If you want my specific method of doing this on an external SSD, see the BEGINNER SETUP README.txt.
-- Open Zenbot Yaml Runner.txt and build the three containers (Zendriver, OpenAPI, DuckDB)
-- Configure the .env file (provided) to suit your setup. My hardware is extremely basic, so you will definitely need to adjust. This is where you start running files through Claude and ask it to connect with your own individual Podman build. I made it as simple as possible, so that root .env file should control everything reasonably. Most settings are kept either in the .env file or the docker-compose file. It's really very versatile in that regard, if you use Llama.cpp with Vulkan (recommended) it allows full control of the GPU setup, with easy switchouts of LLMs.
+
+- Configure the .env file (provided) to suit your setup. My hardware is extremely basic, so you will definitely need to adjust. ALSO HIGHLY IMPORTANT is configuring your Podman LLM model directory.
+
 - Run the podman compose up code.
 - Go to localhost:3000 and configure the tool server:
   -  Navigate to http://localhost:3000
@@ -110,9 +108,7 @@ Check out my website at www.akickintheteeth.com. That is where I've been documen
   - podman logs -f zendriver (more information about what's going on)
 
 
-  ### **Usage**
-  - Open the Zenbot Yaml Runner! That has all the commands you should need.
-  - Check out my other guides or official documentation if you need more depth of understanding.
+Below is some stuff Claude put together. It’s mostly accurate. Just more detail.
 
 <br>
 </br>
@@ -273,3 +269,7 @@ https://github.com/adbar/trafilatura / https://trafilatura.readthedocs.io/en/lat
 
 This project is licensed with GNU Public V3
 
+
+Support me at:
+https://ko-fi.com/dredgesta
+www.akickintheteeth.com
