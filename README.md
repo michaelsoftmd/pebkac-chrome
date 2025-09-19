@@ -19,7 +19,7 @@ Or just give it a job and go do something else. Eat an apple. Read a book.
 
 You operate it simply by sending messages through Open WebUI and watching its progress in the Zenbot Control Panel, which operates as a separate browser tab on your host machine. You can watch the LLM handling everything live. Zenbot will perform its duties and return some nicely-formatted results for you back in the chat window.
 
-How does Zenbot know what to do? By reading the page, of course, same as you. State of the art extraction technologies are built in to Zendriver, giving it an enormous capability boost. I used Trafilatura to achieve this. 
+How does Zenbot know what to do? By reading the page, of course, same as you. State of the art extraction technologies are built in to Zendriver's existing framework, giving it an enormous capability boost. I used Trafilatura to achieve this. 
 
 - Trafilatura is “a cutting-edge Python package and command-line tool designed to gather text on the Web and simplify the process of turning raw HTML into structured, meaningful data.”
 
