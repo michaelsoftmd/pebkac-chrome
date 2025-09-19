@@ -67,7 +67,7 @@ I would also highly recommend adjusting the extraction method to extract more te
 </br>
 
 ## **AUTHOR'S NOTE**
-For full disclosure, I am a writer, not a developer. I barely know print hello world. I began this project using Claude as a way to automate my own web research and social media activities. What came out of it was a much larger project that took many months to complete and taught me a lot about AI, programming, and computer science. It’s not that I assumed it wouldn’t be hard, but that I assumed it wouldn’t be so complex. I can confidently say that I understand most of this project, but of course, I don’t know what I don’t know. Use Zenbot at your own risk. It’s as secure as a VIBE CODING AUTHOR knows how to make it.
+For full disclosure, I am a writer, not a developer. I barely know print hello world, and why this readme is so long. I began this project using Claude as a way to automate my own web research and social media activities. What came out of it was a much larger project that took many months to complete and taught me a lot about AI, programming, and computer science. It’s not that I assumed it wouldn’t be hard, but that I assumed it wouldn’t be so complex. I can confidently say that I understand most of this project, but of course, I don’t know what I don’t know. Use Zenbot at your own risk. It’s as secure as a VIBE CODING AUTHOR knows how to make it.
 
 What I have learned more than anything is that my very basic hardware cannot handle LLMs very well. I have made sure every part of this project is as lightweight and fast as possible. If you choose to support me by donating, that money would first and foremost go towards making this project harder, better, stronger, and faster. I’d also like to direct you to my Amazon page, because on God, writing books doesn't make money. My novel **[Well's Rest](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)** is on **[Amazon](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)**.
 
@@ -86,14 +86,13 @@ Check out my website at www.akickintheteeth.com. That is where I've been documen
 ## **Getting Started**
 ### **Requirements:**
 - **Podman or Docker** Install Podman. This is vital. I use a custom storage directory for my Podman setup. 
-- 
+- **Linux** I use Mint.
 
 ### **Initial Setup**
 - Open the Zenbot Yaml Runner.
 
 - Configure the .env file (provided) to suit your setup. My hardware is extremely basic, so you will definitely need to adjust. ALSO HIGHLY IMPORTANT is configuring your Podman LLM model directory.
 
-- Run the podman compose up code.
 - Go to localhost:3000 and configure the tool server:
   -  Navigate to http://localhost:3000
   -  Go to Settings → Connections → OpenAPI
