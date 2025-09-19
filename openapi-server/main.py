@@ -1079,11 +1079,11 @@ async def get_openapi():
 
 @app.post("/agent/run", response_model=AgentResponse)
 async def run_agent(request: AgentRequest):
-    """Run agent with browser tools - Fixed to use synchronous tools"""
+    """Run agent with synchronous browser tools"""
     try:
         logger.info(f"Running agent with query: {request.query}")
         
-        # Create browser tools (they're synchronous now)
+        # Create browser tools
         tools = [
             GetCurrentURLTool(ZENDRIVER_API_URL),
             NavigateBrowserTool(ZENDRIVER_API_URL),

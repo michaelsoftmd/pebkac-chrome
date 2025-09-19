@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZENBOT - Chrome Nonautomation System</title>
+    <title>ZENBOT - Chrome NonAutomation Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -190,58 +190,55 @@
         }
 
         .btn-primary {
-            background: var(--primary-cyan);
-            color: var(--dark-bg);
-            border-color: var(--primary-cyan);
-            font-weight: 700;
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+            font-weight: 600;
         }
 
         .btn-primary:hover:not(:disabled) {
-            background: #0891b2;
-            border-color: #0891b2;
-            color: var(--dark-bg);
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+            color: #ffffff;
         }
 
         .btn-danger {
-            background: var(--accent-red);
-            color: white;
-            border-color: var(--accent-red);
-            font-weight: 700;
+            background: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+            font-weight: 600;
         }
 
         .btn-danger:hover:not(:disabled) {
-            background: #dc2626;
-            border-color: #dc2626;
-            color: white;
+            background: #b91c1c;
+            border-color: #b91c1c;
+            color: #ffffff;
         }
 
         .btn-boot {
-            background: linear-gradient(135deg, var(--accent-orange) 0%, #ff6600 100%);
-            color: var(--dark-bg);
-            border-color: var(--accent-orange);
-            font-weight: 700;
-            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-            box-shadow: 0 2px 8px rgba(255, 136, 0, 0.2);
+            background: #059669;
+            color: #ffffff;
+            border-color: #059669;
+            font-weight: 600;
         }
 
         .btn-boot:hover:not(:disabled) {
-            background: linear-gradient(135deg, #ff9900 0%, #ff5500 100%);
-            border-color: #ff9900;
-            color: var(--dark-bg);
-            box-shadow: 0 4px 16px rgba(255, 136, 0, 0.3);
+            background: #047857;
+            border-color: #047857;
+            color: #ffffff;
         }
 
         .btn-secondary {
-            background: rgba(107, 114, 128, 0.1);
-            border: 1px solid rgba(107, 114, 128, 0.3);
-            color: rgba(107, 114, 128, 0.9);
+            background: #374151;
+            border: 1px solid #4b5563;
+            color: #d1d5db;
+            font-weight: 600;
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: rgba(107, 114, 128, 0.2);
-            border-color: rgba(107, 114, 128, 0.5);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+            background: #4b5563;
+            border-color: #6b7280;
+            color: #ffffff;
         }
 
         .status {
@@ -335,29 +332,45 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             gap: 1rem;
-            color: var(--text-muted);
-            text-align: center;
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
             z-index: 2;
         }
 
         .vnc-placeholder .icon {
             font-size: 3rem;
-            color: var(--primary-purple);
+            color: var(--zenbot-orange);
             margin-bottom: 0.5rem;
-            animation: pulse-icon 3s infinite;
-            filter: drop-shadow(0 0 8px rgba(124, 58, 237, 0.3));
-        }
-
-        @keyframes pulse-icon {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.05); }
+            font-family: 'Orbitron', monospace;
+            font-weight: 400;
         }
 
         .vnc-placeholder h3 {
-            font-size: 1.125rem;
-            color: var(--text-secondary);
+            font-size: 1.25rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: 600;
+            color: var(--zenbot-orange);
             margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .vnc-placeholder p {
+            font-family: 'JetBrains Mono', monospace;
+            color: #aaaacc;
+            font-size: 0.9rem;
+            margin: 0.2rem 0;
+        }
+
+        .vnc-placeholder p:first-of-type {
+            color: var(--zenbot-orange);
+            font-size: 1rem;
+            font-weight: 500;
         }
 
         #vnc-iframe {
@@ -565,7 +578,7 @@
         <div class="header">
             <div class="zenbot-logo">
                 <div class="zenbot-title">ZENBOT</div>
-                <div class="zenbot-subtitle">Chrome Nonautomation System</div>
+                <div class="zenbot-subtitle">Chrome NonAutomation Platform</div>
             </div>
             <div class="controls">
                 <button id="compose-up" class="btn btn-boot" onclick="composeUp()">Boot System</button>
@@ -607,7 +620,7 @@
                 </div>
 
                 <div id="log-viewer" class="log-viewer">
-                    <div class="log-line info">ZENBOT Chrome Nonautomation System - Initializing...</div>
+                    <div class="log-line info">ZENBOT Chrome NonAutomation Platform - Initializing...</div>
                     <div class="log-line info">System components loading...</div>
                     <div class="log-line info">Ready for operation</div>
                     <div class="log-line warning">Connecting to log streams...</div>
