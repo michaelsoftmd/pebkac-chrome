@@ -3,13 +3,13 @@
 # Make working storage directories
 mkdir -p /your/podman/location/zendriver-data
 mkdir -p /your/podman/location/duckdb-data
+mkdir -p /your/podman/location/browser-session-data
 mkdir -p /your/podman/location/webui-data # or whatever your webui folder is called)
-7 3
-# and these too, maybe. I'm not sure about them:
+mkdir -p /your/podman/location/models/gguf # this is where your model files should be located. if not, change them in .env
+
+# also add these too, maybe. I'm not sure about them:
 mkdir tmp
 mkdir cache
-mkdir browser-profiles
-hell u might need more profiles things. ive got browser-session-data. i think that's right.
 mkdir shared
 mkdir storage - this is where most stuff goes, and you dont have permission to access most of it
 
@@ -45,6 +45,12 @@ python main.py
 
 # connect to localhost:8888 for Zenbot Control Panel!
 
+#you might have to add in open webui's admin settings. these are:
+http://openapi-tools:9000
+openapi.json
+
+# That should be it. Open WebUI is on localhost:3000, and zenbot is on localhost:8888. Have fun!
+
 
 
 # If needed, remove network first
@@ -71,27 +77,12 @@ podman images -a
 podman stats
 radeontop
 
-podman cp podman_zendriver:/tmp/ /exports
-
-
 
 # ADDITIONAL IMPORTANT NOTES
 # The included docker-compose refers to a specific Llama.cpp build. I left that there so you can see how it works or just drop in your own setup at will. 
 
 # I have included a Dockerfile for a Podman-based Llama.cpp w/Vulkan build. To use, rename that file to Dockerfile, place in a folder "llama-vulan" in Podman working dir, cd to llama-vulkan, and run:
 podman build -t llama-vulkan .
-
-
-# Junk for multibot later
-suggestions:
-Now you can properly trigger both browsers:
-  # In Open WebUI, try:
-  "Use open_multiple_browsers with count=2, then navigate_session Browser_1 to google.com and navigate_session 
-  Browser_2 to wikipedia.org"
-multibot may require readding:
-          "--single-process",
-          "--no-zygote",
-and disabling session persistence
 
 
 
