@@ -222,36 +222,6 @@ ParallelExtractionTool
 5. **Testing Automation**: AI-driven testing of web applications
 6. **Information Synthesis**: Combine data from multiple sources automatically
 
-### **Technical Stack Summary: Now This Is The Cheese:**
-
-```
-┌─────────────────────────────────────────┐
-│           Open WebUI (Port 3000)        │
-│              Chat Interface              │
-└────────────────┬────────────────────────┘
-                 │
-┌────────────────┴────────────────────────┐
-│        Llama.cpp Server (Port 8080)     │
-│         Local LLM with GPU Accel        │
-└────────────────┬────────────────────────┘
-                 │
-┌────────────────┴────────────────────────┐
-│     OpenAPI Tools (Port 9000)           │
-│    SmolAgents ← → Browser Bridge        │
-└───┬─────────────────────────────────┬───┘
-    │                                 │
-┌───┴──────────┐              ┌──────┴───┐
-│ Redis Cache  │              │  DuckDB  │
-│   (L1)       │              │   (L2)   │
-└──────────────┘              └──────────┘
-    │                                 │
-┌───┴─────────────────────────────────┴───┐
-│      Zendriver API (Port 8090)          │
-│   Undetectable Browser Automation       │
-│         VNC Debug (Port 5910)           │
-└──────────────────────────────────────────┘
-```
-
 
 CREDITS:
 
