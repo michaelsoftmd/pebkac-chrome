@@ -57,11 +57,11 @@ Here’s what needs work:
 - Caching, memory, more functionality.
 - This section
 
-This version of Zenbot is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating Zenbot, I would HIGHLY recommend using David_AU’s finetunes, particularly the Brainstorm variants.
+This version of Zenbot is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating Zenbot, I would HIGHLY recommend using David_AU’s finetunes, particularly the Brainstorm variants. Not only do they know to operate Zenbot nearly 100% of the time, but they seem to have been finetuned on the Smolagents library, making much of the ‘thinking’ already integrated.
 
 Search for and download them here: https://hf.tst.eu/model
 
-I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. Not only do they know to operate Zenbot nearly 100% of the time, but they seem to have been finetuned on the Smolagents library, making much of the ‘thinking’ already integrated.
+I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. MoE models are excellent. Between non-thinking and thinking models, I like the results I get from non-thinking models.
 
 I would also highly recommend adjusting the extraction method to extract more text, and altering llama.cpp’s GPU usage in the .env file. That will truly allow Zenbot to work its magic.
 
