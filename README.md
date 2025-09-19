@@ -84,7 +84,7 @@ Zenbot might even be able to buy it for you.
 It will definitely be able to find me on Royal Road:
 https://www.royalroad.com/fiction/126900/wells-rest-grimdark-pirate-action-watch-book-trailer
 
-I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, fine-tuned models are the future for operating untold new and old technologies. I am also of the opinion completely that LLMs should not be creating stories. Creating stories is for humans. Let LLMs build the vehicles for us to tell stories in. The simple act of creation engages our minds at a level of meaning LLMs cannot reach, because truth emerges from the deeply personal refinement of meaning from life’s slop. LLMs, for all their value, produce only slop. Nothing can produce meaningful words but you.
+I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, fine-tuned models are the future for operating untold new and old technologies. I am also of the opinion completely that LLMs should not be creating stories. Creating stories is for humans. Let LLMs build the vehicles for us to tell stories in. The simple act of creation engages our minds at a level of meaning LLMs cannot reach, because meaning emerges from deeply personal refinement of experience from life’s slop. LLMs, for all their value, produce only slop. Nothing can produce meaningful words but you.
 
 Check out my website at www.akickintheteeth.com. That is where I've been documenting my other experiments with AI. It's a brave new world!
 
