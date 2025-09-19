@@ -66,6 +66,9 @@ I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was 
 
 I would also highly recommend adjusting the extraction method to extract more text, and altering llama.cpp’s GPU usage in the .env file. That will truly allow Zenbot to work its magic.
 
+<br>
+</br>
+
 **And so, I introduce to you Zenbot, the web automation service without the automation. It's just a mathematical word-generator with a set of word-tools, let free on the internet.**
 
 <br>
