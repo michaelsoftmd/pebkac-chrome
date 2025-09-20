@@ -13,7 +13,7 @@ Together, they fit to give your containerised, secure, rambunctiously stupid LLM
 
 Important! Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no workflows, no LangGraphs, no LangChains, and no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and a few APIs.
 
-The browser runs with NoVNC and loads about:blank on startup. You are warned. Zenbot is not AGI. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It has ten (adjustable) steps to accomplish any task you give it, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
+The browser runs with NoVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It has ten (adjustable) steps to accomplish any task you give it, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
 Or just give it a job and go do something else. Eat an apple. Read a book.
 
