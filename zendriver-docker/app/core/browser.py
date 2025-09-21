@@ -19,6 +19,34 @@ _browser_tab = None
 _browser_lock = asyncio.Lock()
 _tab_creation_lock = asyncio.Lock()  # Separate lock for tab operations
 
+async def is_browser_alive(browser_or_tab) -> bool:
+    """Centralized browser/tab health check"""
+    try:
+        if hasattr(browser_or_tab, 'evaluate'):
+            await browser_or_tab.evaluate("1")
+        else:
+            _ = browser_or_tab.tabs
+        return True
+    except Exception as e:
+        logger.debug(f"Browser health check failed: {e}")
+        return False
+
+async def find_element_safe(tab, selector: str, timeout: int = TIMEOUTS.element_find, raise_on_missing: bool = True):
+    """Standardized element finding with consistent error handling"""
+    try:
+        element = await tab.find(selector, timeout=timeout)
+        if not element and raise_on_missing:
+            raise ElementNotFoundError(f"Element not found: {selector}")
+        return element
+    except asyncio.TimeoutError:
+        if raise_on_missing:
+            raise ElementNotFoundError(f"Timeout finding element: {selector}")
+        return None
+
+class ElementNotFoundError(Exception):
+    """Element not found during browser operations"""
+    pass
+
 class BrowserManager:
     """Manager for single persistent browser instance"""
 
@@ -46,20 +74,19 @@ class BrowserManager:
 
         async with _browser_lock:
             # Check if browser exists and is alive
+            if _browser and await is_browser_alive(_browser):
+                logger.debug("Browser instance is alive")
+                return _browser
+
+            # Browser is dead or missing, clean up
             if _browser:
+                logger.warning("Browser appears dead, recreating...")
                 try:
-                    # Simple health check - try to access tabs property
-                    _ = _browser.tabs  # This should work if browser is alive
-                    logger.debug("Browser instance is alive")
-                    return _browser
-                except Exception as e:
-                    logger.warning(f"Browser appears dead: {e}, recreating...")
-                    try:
-                        await _browser.close()
-                    except:
-                        pass
-                    _browser = None
-                    _browser_tab = None
+                    await _browser.close()
+                except:
+                    pass
+                _browser = None
+                _browser_tab = None
 
             # Create browser if needed
             logger.info("Creating persistent browser instance")
@@ -71,22 +98,15 @@ class BrowserManager:
         global _browser_tab
 
         # Quick check without lock (double-checked locking pattern)
-        if _browser_tab:
-            try:
-                await _browser_tab.evaluate("1")
-                return _browser_tab
-            except:
-                pass  # Fall through to recreation
+        if _browser_tab and await is_browser_alive(_browser_tab):
+            return _browser_tab
 
         # Now acquire lock for creation/validation
         async with _tab_creation_lock:  # Use separate lock, not _browser_lock
             # Re-check after acquiring lock
-            if _browser_tab:
-                try:
-                    await _browser_tab.evaluate("1")
-                    return _browser_tab
-                except:
-                    _browser_tab = None
+            if _browser_tab and await is_browser_alive(_browser_tab):
+                return _browser_tab
+            _browser_tab = None
 
             # Get or create tab
             browser = await self.get_browser()
@@ -113,7 +133,7 @@ class BrowserManager:
                 timeout=5
             )
             await asyncio.sleep(0.5)  # Give it time to die
-        except:
+        except (subprocess.SubprocessError, OSError, asyncio.TimeoutError):
             pass
 
         # Ensure directories exist
@@ -296,8 +316,8 @@ class BrowserManager:
                 try:
                     await tab.find(wait_for, timeout=wait_timeout)
                     logger.info(f"Found wait_for element: {wait_for}")
-                except:
-                    logger.warning(f"Wait element not found: {wait_for}")
+                except (asyncio.TimeoutError, Exception) as e:
+                    logger.warning(f"Wait element not found: {wait_for} - {e}")
 
             # Get current state
             current_url = await tab.evaluate("window.location.href")

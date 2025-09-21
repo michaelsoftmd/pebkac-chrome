@@ -203,16 +203,17 @@ async def health_check(
     """Health check endpoint"""
     browser_status = False
     try:
+        from app.core.browser import is_browser_alive
         browser = await browser_manager.get_browser()
-        browser_status = browser is not None
-    except:
+        browser_status = await is_browser_alive(browser)
+    except Exception:
         pass
 
     db_healthy = False
     try:
         sessions = db_manager.get_research_sessions(limit=1)
         db_healthy = True
-    except:
+    except Exception:
         pass
 
     return {
@@ -1054,29 +1055,6 @@ async def extract_content(
     # Return the result which already includes formatted_output for Open WebUI
     return result
 
-@app.post("/extraction/extract-cached")
-async def extract_cached(
-    browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
-    cache_service: Annotated[ExtractorCacheService, Depends(get_cache_service)],
-    request: ExtractionRequest
-):
-    """Legacy cached extraction endpoint - redirects to unified"""
-    service = UnifiedExtractionService(browser_manager, cache_service)
-    
-    # Map ExtractionRequest to simplified params
-    result = await service.extract(
-        selector=request.selector,
-        extract_all=request.extract_all,
-        use_cache=True
-    )
-    
-    # Format for legacy compatibility
-    if result['status'] == 'success':
-        if request.extract_href and result['data']:
-            # Legacy href extraction - not supported in simplified version
-            result['data'] = {'text': result['data'], 'href': None}
-    
-    return result
 
 
 # ===========================

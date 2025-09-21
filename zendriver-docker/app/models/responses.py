@@ -31,8 +31,3 @@ class ExtractionResult(BaseModel):
     extraction_method: str = Field("standard", description="Method used: css, xpath, or auto")
     cached: bool = Field(False, description="Whether result was from cache")
     
-class ExtractResponse(BaseModel):
-    """Legacy extract response - keep for backward compatibility"""
-    status: str = "success"
-    count: int
-    data: Any
