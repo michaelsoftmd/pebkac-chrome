@@ -4,7 +4,7 @@
 
 UNRELATED TO THE OTHER ZENBOT PROJECT! This project shares NO RELATION WHATSOEVER to any other Zenbot-named repository that can be found online. This project was named after its originally forked project, Zendriver.
 
-Fundamentally, Zenbot is an AI pet in a sandboxed Podman environment. Once I made the environment I wanted to give it something to do, so I created Zenbot. Zenbot is a web nonautomation framework powered by Smolagents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant orchestration of English language-powered Python interpretation driven by you, the user.
+Fundamentally, Zenbot is an AI pet in a sandboxed Podman environment. Once I made the environment I wanted to give it something to do, so I created Zenbot. Zenbot is a web nonautomation framework powered by Smolagents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user.
 
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
 - Smolagents is "a barebones library for agents that think in code."
