@@ -97,6 +97,7 @@ Check out my website at www.akickintheteeth.com. That is where I've been documen
 - **Podman or Docker** I used Podman. I use a custom storage directory for my Podman setup. You'll have to adapt a little.
 - **Podman/Docker Compose** Runs stuff.
 - **Linux** I use Mint.
+- **Open WebUI** or equivalent.
 
 ### **Initial Setup**
 - Open the Zenbot Yaml Runner.
