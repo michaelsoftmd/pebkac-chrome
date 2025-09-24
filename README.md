@@ -62,7 +62,7 @@ This version of Zenbot is designed to be mindful of context length and run on in
 
 Search for and download them here: https://hf.tst.eu/model
 
-I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. MoE models are excellent. Between non-thinking and thinking models, I like the results I get from non-thinking models.
+I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. His MoE models are excellent. Between non-thinking and thinking models, I like the results I get from non-thinking models.
 
 I would also highly recommend adjusting the extraction method to extract more text, and altering llama.cpp’s GPU usage in the .env file. That will truly allow Zenbot to work its magic.
 
@@ -83,7 +83,8 @@ Zenbot might even be able to buy it for you.
 
 It will definitely be able to find me on Royal Road:
 https://www.royalroad.com/fiction/126900/wells-rest-grimdark-pirate-action-watch-book-trailer
-
+<br>
+</br>
 I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, fine-tuned models are the future for operating untold new and old technologies. I am also of the opinion completely that LLMs should not be creating stories. Creating stories is for humans. Let LLMs build the vehicles for us to tell stories in. The simple act of creation engages our minds at a level of meaning LLMs cannot reach, because meaning emerges from the deeply personal refinement of experiencing life’s slop. LLMs, for all their value, produce only slop. Nothing can produce meaningful words but you.
 
 Check out my website at www.akickintheteeth.com. That is where I've been documenting my other experiments with AI. It's a brave new world!
@@ -93,7 +94,8 @@ Check out my website at www.akickintheteeth.com. That is where I've been documen
 
 ## **Getting Started**
 ### **Requirements:**
-- **Podman or Docker** Install Podman. This is vital. I use a custom storage directory for my Podman setup. 
+- **Podman or Docker** I used Podman. I use a custom storage directory for my Podman setup. You'll have to adapt a little.
+- **Podman/Docker Compose** Runs stuff.
 - **Linux** I use Mint.
 
 ### **Initial Setup**
