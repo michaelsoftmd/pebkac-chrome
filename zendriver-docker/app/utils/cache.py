@@ -2,25 +2,34 @@ import json
 import time
 import hashlib
 import pickle
+import asyncio
+import logging
 from typing import Optional, Any, Dict
 from functools import wraps
-import asyncio
+from app.utils.memory_manager import BoundedLRUCache
+
+logger = logging.getLogger(__name__)
 
 class CacheManager:
-    """Flexible cache manager supporting memory and Redis"""
-    
+    """Cache manager with memory limits"""
+
     def __init__(self, settings):
         self.settings = settings
-        self.memory_cache: Dict[str, tuple] = {}
+        self.memory_cache = BoundedLRUCache(
+            max_items=getattr(settings, 'cache_max_items', 5000),
+            max_memory_mb=getattr(settings, 'cache_max_memory_mb', 200)
+        )
         self.redis_client = None
-        
+
         if settings.redis_url:
             try:
                 import redis.asyncio as redis
                 self.redis_client = redis.from_url(settings.redis_url, decode_responses=False)
-                print(f"Redis cache connected: {settings.redis_url}")
+                logger.info(f"Redis cache connected: {settings.redis_url}")
             except Exception as e:
-                print(f"Redis not available ({e}), using memory cache")
+                logger.warning(f"Redis not available ({e}), using memory cache")
+
+        asyncio.create_task(self._periodic_cleanup())
     
     def _make_key(self, prefix: str, params: dict) -> str:
         """Create cache key from prefix and parameters"""
@@ -30,7 +39,6 @@ class CacheManager:
     
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache"""
-        # Try Redis first
         if self.redis_client:
             try:
                 value = await self.redis_client.get(key)
@@ -38,34 +46,20 @@ class CacheManager:
                     return pickle.loads(value)
             except:
                 pass
-        
-        # Fall back to memory cache
-        if key in self.memory_cache:
-            value, timestamp = self.memory_cache[key]
-            if time.time() - timestamp < self.settings.cache_ttl:
-                return value
-            else:
-                del self.memory_cache[key]
-        
-        return None
+
+        return await self.memory_cache.get(key)
     
     async def set(self, key: str, value: Any, ttl: Optional[int] = None):
         """Set value in cache"""
         ttl = ttl or self.settings.cache_ttl
-        
-        # Set in Redis if available
+
         if self.redis_client:
             try:
-                await self.redis_client.setex(
-                    key, 
-                    ttl, 
-                    pickle.dumps(value)
-                )
+                await self.redis_client.setex(key, ttl, pickle.dumps(value))
             except:
                 pass
-        
-        # Also set in memory cache
-        self.memory_cache[key] = (value, time.time())
+
+        await self.memory_cache.set(key, value, ttl)
     
     async def delete(self, key: str):
         """Delete from cache"""
@@ -96,11 +90,21 @@ class CacheManager:
         
         # Clear from memory cache
         keys_to_delete = [
-            k for k in self.memory_cache.keys() 
+            k for k in self.memory_cache.cache.keys()
             if pattern.replace('*', '') in k
         ]
         for key in keys_to_delete:
-            del self.memory_cache[key]
+            await self.memory_cache.set(key, None, 0)
+
+    async def _periodic_cleanup(self):
+        """Clean up expired entries every 5 minutes"""
+        while True:
+            await asyncio.sleep(300)
+            try:
+                await self.memory_cache.clear_expired()
+                logger.info(f"Cache cleanup completed: {self.memory_cache.get_stats()}")
+            except Exception as e:
+                logger.error(f"Cache cleanup error: {e}")
 
 def cached(prefix: str, ttl: Optional[int] = None):
     """Decorator for caching function results"""

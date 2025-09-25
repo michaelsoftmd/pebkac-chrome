@@ -5,11 +5,14 @@ import asyncio
 import logging
 import shutil
 import subprocess
+import tempfile
+import hashlib
 from typing import Optional, Dict, Any
 from pathlib import Path
 import zendriver as zd
-from zendriver import cdp  # Import CDP for health check
+from zendriver import cdp
 from app.core.timeouts import TIMEOUTS
+from app.utils.tab_manager import TabPool
 
 logger = logging.getLogger(__name__)
 
@@ -47,26 +50,67 @@ class ElementNotFoundError(Exception):
     """Element not found during browser operations"""
     pass
 
+class SecurityError(Exception):
+    """Security violation detected"""
+    pass
+
 class BrowserManager:
     """Manager for single persistent browser instance"""
 
     def __init__(self, settings):
         self.settings = settings
+        self.tab_pool = None
 
-        # Validate and resolve path to prevent traversal
-        base_dir = Path(settings.profiles_dir).resolve()
+        self.secure_base = self._create_secure_base_dir()
 
-        # Ensure base_dir is within /app
-        if not str(base_dir).startswith('/app'):
-            raise ValueError("Invalid profiles directory")
+        profile_id = hashlib.sha256(f"main_profile_{os.getpid()}".encode()).hexdigest()[:16]
+        self.profile_dir = self.secure_base / f"profile_{profile_id}"
 
-        self.profile_dir = (base_dir / "main_profile").resolve()
+        self._safe_mkdir(self.profile_dir)
 
-        # Verify resolved path is still within base
-        if not str(self.profile_dir).startswith(str(base_dir)):
-            raise ValueError("Path traversal detected")
+        self.session_data_dir = self.secure_base / "session-data"
+        self._safe_mkdir(self.session_data_dir)
 
-        self.session_data_dir = Path("/app/session-data")
+    def _create_secure_base_dir(self) -> Path:
+        """Create a secure base directory that can't be escaped"""
+        base_dir = Path(tempfile.gettempdir()) / "zenbot_profiles"
+        base_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        return base_dir.resolve()
+
+    def _safe_mkdir(self, target_path: Path):
+        """Safely create directory with validation"""
+        abs_path = target_path.resolve()
+
+        try:
+            abs_path.relative_to(self.secure_base)
+        except ValueError:
+            raise SecurityError(f"Path traversal detected: {target_path}")
+
+        if abs_path.is_symlink():
+            raise SecurityError(f"Symlink detected: {abs_path}")
+
+        for parent in abs_path.parents:
+            if parent.is_symlink():
+                raise SecurityError(f"Symlink in path: {parent}")
+            if parent == self.secure_base:
+                break
+
+        abs_path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        return abs_path
+
+    def _validate_path(self, path: Path) -> Path:
+        """Validate any path before use"""
+        abs_path = path.resolve()
+
+        try:
+            abs_path.relative_to(self.secure_base)
+        except ValueError:
+            raise SecurityError(f"Path outside secure directory: {path}")
+
+        if abs_path.is_symlink() or any(p.is_symlink() for p in abs_path.parents):
+            raise SecurityError(f"Symlink detected in path: {path}")
+
+        return abs_path
 
     async def get_browser(self):
         """Get the single browser instance"""
@@ -128,7 +172,7 @@ class BrowserManager:
         # Kill any zombie Chrome processes first
         try:
             subprocess.run(
-                ["pkill", "-f", "chrome.*--user-data-dir=/app/profiles/main_profile"],
+                ["pkill", "-f", "chrome.*zenbot_profiles"],
                 capture_output=True,
                 timeout=5
             )

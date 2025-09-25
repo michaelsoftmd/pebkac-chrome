@@ -47,9 +47,12 @@ class CollectedPost(Base):
 # Database initialization
 def init_db():
     """Create all tables"""
-    # Ensure directory exists
-    db_path = settings.database_url.replace("sqlite://", "")
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    # Ensure directory exists for sqlite databases
+    if "sqlite" in settings.database_url:
+        db_path = settings.database_url.replace("sqlite:///", "/")
+        db_dir = os.path.dirname(db_path)
+        if db_dir:
+            os.makedirs(db_dir, exist_ok=True)
     Base.metadata.create_all(bind=engine)
 
 def get_db() -> Generator[Session, None, None]:

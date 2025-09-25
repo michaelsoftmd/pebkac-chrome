@@ -59,15 +59,14 @@ RUN uv sync --no-install-project || \
 # Copy application code
 COPY --chown=$DOCKER_USER:$DOCKER_USER app /app/app
 
-# Create data, profiles, and tmp directories with proper ownership
-RUN mkdir -p /app/data /app/profiles /app/data/exports /app/tmp && \
-    mkdir -p /app/tmp/exports /app/tmp/screenshots && \
-    chown -R $DOCKER_USER:$DOCKER_USER /app/data /app/profiles /app/tmp
+# Create tmp directories only (DB is in /tmp, no /app/data needed)
+RUN mkdir -p /app/tmp/exports /app/tmp/screenshots && \
+    chown -R $DOCKER_USER:$DOCKER_USER /app/tmp
 
 # Set PATH
 ENV PATH="/app/.venv/bin:$PATH"
 
-# SWITCH TO ROOT 
+# SWITCH TO ROOT for entrypoint
 USER root
 
 # Install additional packages
@@ -75,24 +74,19 @@ RUN apt-get update && \
     apt-get install -y novnc websockify netcat-openbsd && \
     rm -rf /var/lib/apt/lists/*
 
-# Ensure profiles directory exists with correct permissions
-RUN mkdir -p /app/profiles/main_profile && \
-    chown -R chrome-user:chrome-user /app/profiles && \
-    chmod -R 755 /app/profiles
-
-# Create wrapper script
+# Create simple wrapper script with minimal permission fix
 RUN printf '#!/bin/bash\n\
-# Fix tmpfs permissions at startup\n\
-chown chrome-user:chrome-user /app/profiles 2>/dev/null || true\n\
-chmod 755 /app/profiles 2>/dev/null || true\n\
-# Rest of script...\n\
+# Only fix permissions for session data if it exists\n\
+if [ -d "/app/session-data" ]; then\n\
+    chmod -R 755 /app/session-data 2>/dev/null || true\n\
+fi\n\
 /entrypoint.sh "$@" &\n\
 MAIN_PID=$!\n\
 while ! nc -z localhost ${WAYVNC_PORT:-5910}; do sleep 1; done\n\
 websockify --web=/usr/share/novnc/ 6080 localhost:${WAYVNC_PORT:-5910} &\n\
 wait $MAIN_PID\n' > /start-with-novnc.sh && chmod +x /start-with-novnc.sh
 
-# DO NOT SWITCH USER - Stay as root for entrypoint
+# Stay as root for entrypoint (as originally designed)
 ENTRYPOINT ["/start-with-novnc.sh"]
 CMD [".venv/bin/python", "-m", "app.main"]
 

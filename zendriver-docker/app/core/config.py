@@ -24,11 +24,10 @@ class Settings(BaseSettings):
     
     # Paths
     data_dir: str = "/app/data"
-    profiles_dir: str = "/app/profiles"
     exports_dir: str = "/tmp/exports"
     
-    # Database (FIXED: 3 slashes instead of 4)
-    database_url: str = "sqlite:///app/data/research.db"
+    # Database in /tmp (ephemeral, no permission issues)
+    database_url: str = "sqlite:///tmp/research.db"
     
     # Rate limiting
     rate_limit_enabled: bool = True

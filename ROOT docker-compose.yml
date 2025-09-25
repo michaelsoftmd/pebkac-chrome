@@ -19,21 +19,7 @@ volumes:
 
   swayvnc-wayvnc-certs:
     driver: local
-    
-  zendriver-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/ssd/podman/zendriver-data
-      o: bind
-      
-  browser-profiles:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/ssd/podman/browser-profiles
-      o: bind
-  
+
   # New cache volumes
   redis-data:
     driver: local
@@ -77,7 +63,7 @@ services:
       - /dev/kfd:/dev/kfd
     group_add:
       - video
-      - "992"
+      - # or your own
     security_opt:
       - label=disable
       - seccomp=unconfined
@@ -99,7 +85,8 @@ services:
       "-c", "${LLAMACPP_CONTEXT:-4096}",
       "-b", "${LLAMACPP_BATCH:-1024}",
       "-ub", "${LLAMACPP_UBATCH:-512}",
-      "--flash-attn", "on",
+#      "--n-cpu-moe", havent got this one yet, nbd
+      "--flash-attn",
       "--mlock",
       "-sm", "layer",
       "--jinja",
@@ -133,7 +120,7 @@ services:
       - WEBUI_AUTH=false
       - ENABLE_RAG_WEB_SEARCH=true
       - ENABLE_IMAGE_GENERATION=false
-      - WEBUI_URL=http://localhost:3000/
+      - WEBUI_URL=http://localhost:3000
     restart: always
     profiles: ["webui", "llamacpp", "llamafile", "ollama", "full"]
 
@@ -149,11 +136,9 @@ services:
       - "127.0.0.1:5910:5910"
       - "127.0.0.1:6080:6080"
     volumes:
-      - swayvnc-wayvnc-certs:/certs
-      - zendriver-data:/app/data
+      - swayvnc-wayvnc-certs:/certs        # Keep - needed for VNC
+      # KEEP THIS - Critical for persistent browser sessions
       - /mnt/ssd/podman/browser-session-data:/app/session-data:rw
-    tmpfs:
-      - /app/profiles
     environment:
       - RENDER_GROUP_GID=992
       - SWAY_RESOLUTION=${SWAY_RESOLUTION:-640x480}
