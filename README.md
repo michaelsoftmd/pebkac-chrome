@@ -59,7 +59,7 @@ Here’s what needs work:
 - Managing volume mounts in regards to browser profiles/databases
 - This section
 
-This version of Zenbot is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating Zenbot, I would HIGHLY recommend using David_AU’s finetunes, particularly the Brainstorm variants. Not only do they know to operate Zenbot nearly 100% of the time, but they seem to have been finetuned on the Smolagents library, making much of the ‘thinking’ already integrated.
+This version of Zenbot is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating Zenbot, I would HIGHLY recommend using David_AU’s models, particularly the Brainstorm variants. Not only do they know to operate Zenbot nearly 100% of the time, but they seem to have been trained on the Smolagents library, making much of the ‘thinking’ already integrated.
 
 Search for and download them here: https://hf.tst.eu/model
 
