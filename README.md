@@ -102,8 +102,9 @@ I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs a
 
 ### **Initial Setup**
 - Open the Zenbot Yaml Runner.
-
-- Configure the .env file (provided) to suit your setup. My hardware is extremely basic, so you will definitely need to adjust. ALSO HIGHLY IMPORTANT is configuring your Podman LLM model directory.
+- Rename the ROOT files to .env and docker-compose.yml
+- Configure the docker-compose file to suit your setup.
+- Configure the .env file to suit your setup. My hardware is extremely basic, so you will definitely need to adjust. ALSO HIGHLY IMPORTANT is configuring your Podman LLM model directory.
 
 - Go to localhost:3000 and configure the tool server:
   -  Navigate to http://localhost:3000
