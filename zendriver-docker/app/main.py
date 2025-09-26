@@ -114,12 +114,16 @@ def get_substack_service(
     """Get Substack service instance"""
     return SubstackService(browser_manager, db_session)
 
-def get_cache_service() -> ExtractorCacheService:
+async def get_cache_service() -> ExtractorCacheService:
     """Get cache service instance"""
     settings = get_settings()
     if not settings.redis_url:
         settings.redis_url = os.getenv("REDIS_URL", "redis://redis-cache:6379")
+
+    # Create manager without automatic task creation
     cache_manager = CacheManager(settings)
+
+    # The cleanup task will start lazily when cache is first used
     return ExtractorCacheService(cache_manager)
 
 

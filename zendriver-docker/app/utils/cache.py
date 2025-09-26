@@ -20,6 +20,8 @@ class CacheManager:
             max_memory_mb=getattr(settings, 'cache_max_memory_mb', 200)
         )
         self.redis_client = None
+        self._cleanup_task = None
+        self._cleanup_started = False
 
         if settings.redis_url:
             try:
@@ -29,7 +31,13 @@ class CacheManager:
             except Exception as e:
                 logger.warning(f"Redis not available ({e}), using memory cache")
 
-        asyncio.create_task(self._periodic_cleanup())
+        # Don't start cleanup task here - do it lazily
+
+    async def ensure_cleanup_running(self):
+        """Start cleanup task if not already running"""
+        if not self._cleanup_started:
+            self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
+            self._cleanup_started = True
     
     def _make_key(self, prefix: str, params: dict) -> str:
         """Create cache key from prefix and parameters"""
@@ -39,6 +47,8 @@ class CacheManager:
     
     async def get(self, key: str) -> Optional[Any]:
         """Get value from cache"""
+        await self.ensure_cleanup_running()  # Ensure cleanup is running
+
         if self.redis_client:
             try:
                 value = await self.redis_client.get(key)
@@ -51,6 +61,8 @@ class CacheManager:
     
     async def set(self, key: str, value: Any, ttl: Optional[int] = None):
         """Set value in cache"""
+        await self.ensure_cleanup_running()  # Ensure cleanup is running
+
         ttl = ttl or self.settings.cache_ttl
 
         if self.redis_client:
