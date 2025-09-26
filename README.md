@@ -109,7 +109,8 @@ I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs a
 - Go to localhost:3000 and configure the tool server:
   -  Navigate to http://localhost:3000
   -  Go to Settings → Connections → OpenAPI
-  -  Add URL: http://openapi-tools:9000
+  -  Add URL: http://openapi-tools:9000 
+  -  openapi.json
   -  Click "Add" and verify tools appear
   -  Go to Open WebUI's model settings and enable tool use for that model specifically (you will have to do this each time, but only once for each model)
 - Run the code to start the Zenbot virtual environment.
