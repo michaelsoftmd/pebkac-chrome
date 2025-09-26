@@ -86,7 +86,7 @@ services:
       "-b", "${LLAMACPP_BATCH:-1024}",
       "-ub", "${LLAMACPP_UBATCH:-512}",
 #      "--n-cpu-moe", havent got this one yet, nbd
-      "--flash-attn",
+      "--flash-attn", "auto",
       "--mlock",
       "-sm", "layer",
       "--jinja",
