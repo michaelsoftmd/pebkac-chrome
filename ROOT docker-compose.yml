@@ -140,7 +140,7 @@ services:
       # KEEP THIS - Critical for persistent browser sessions
       - /mnt/ssd/podman/browser-session-data:/app/session-data:rw
     environment:
-      - RENDER_GROUP_GID=992
+      - RENDER_GROUP_GID=# or your own
       - SWAY_RESOLUTION=${SWAY_RESOLUTION:-640x480}
       - WAYVNC_PORT=5910
       - WAYVNC_ENABLE_AUTH=false
