@@ -88,7 +88,7 @@ https://www.royalroad.com/fiction/126900/wells-rest-grimdark-pirate-action-watch
 <br>
 </br>
 
-I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, tailored models are the future for operating untold new and old technologies. Check out my website at www.akickintheteeth.com. That is where I've been documenting my other experiments with AI. It's a brave new world!
+I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs are changing. Small, tailored models are the future for operating untold new and old technologies. I do not know if they should be writing words that mean things to humans. Check out my website at www.akickintheteeth.com. That is where I've been documenting my other experiments with AI. It's a brave new world!
 
 <br>
 </br>
