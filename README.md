@@ -4,16 +4,16 @@
 
 UNRELATED TO THE OTHER ZENBOT PROJECT! This project shares NO RELATION WHATSOEVER to any other Zenbot-named repository that can be found online. This project was named after its originally forked project, Zendriver.
 
-Fundamentally, Zenbot is an AI pet in a sandboxed Podman environment. Once I made the environment I wanted to give it something to do, so I created Zenbot. Zenbot is a web nonautomation framework powered by Smolagents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user.
+Zenbot browses the web for you. Fundamentally, Zenbot began as an AI pet in a sandboxed Podman environment. Once I made the environment I wanted to give it something to do, so I created Zenbot. Zenbot is a web nonautomation framework powered by Smolagents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user.
 
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
 - Smolagents is "a barebones library for agents that think in code."
 
-Together, they fit to give your containerised, secure, rambunctiously stupid LLM a manual and a set of tools to operate a web browser. The massive advantage to this is that everything is containerised - the LLM, the web browser, and everything it uses is ENTIRELY contained on a local, isolated network that never gets root access, but enjoys the full benefits of working in your system.
+Together, they fit to give your localised, secure, rambunctiously stupid LLM a manual and a set of tools to operate a web browser. The massive advantage to this is that everything is contained - the LLM, the web browser, and everything it uses is (almost) entirely kept inside a local, isolated network of little boxes that never get root access, but enjoy the full benefits of working in your system.
 
 Important! Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no workflows, no LangGraphs, no LangChains, and no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and a few APIs.
 
-The browser runs with NoVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It has ten (adjustable) steps to accomplish any task you give it, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
+The browser runs with noVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It has ten (adjustable) steps to accomplish any task you give it, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
 Or just give it a job and go do something else. Eat an apple. Read a book.
 
@@ -56,7 +56,7 @@ Here's what it does:
 Here’s what needs work:
 - Caching, memory, more functionality.
 - Version control
-- Managing volume mounts in regards to browser profiles/databases
+- Managing volume mounts in regards to browser profiles/databases. They can be kept inside the container, I just need to adjust the containers/ports for conflicts.
 - This section
 
 This version of Zenbot is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating Zenbot, I would HIGHLY recommend using David_AU’s models, particularly the Brainstorm variants. Not only do they know to operate Zenbot nearly 100% of the time, but they seem to have been trained on the Smolagents library, making much of the ‘thinking’ already integrated.
