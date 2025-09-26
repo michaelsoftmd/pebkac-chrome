@@ -155,7 +155,7 @@ services:
       - label:disable
     group_add:
       - video
-      - "992"
+      - "# or your own"
     restart: unless-stopped
     profiles: ["zendriver", "webui", "llamacpp", "openhands", "full"]
 
