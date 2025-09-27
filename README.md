@@ -163,21 +163,26 @@ Below is some stuff Claude put together. It’s mostly accurate. Just more detai
 - **Local LLM inference** via llama.cpp with Vulkan GPU acceleration (or your own drop-in LLM setup, its entirely workable)
 
 - **Tool suite for agents**:
-GetCurrentURLTool
-NavigateBrowserTool
-VisitWebpageTool
-CloudflareBypassTool
-ClickElementTool
-ExtractContentTool
-TypeTextTool
-KeyboardNavigationTool
-WebSearchTool
-SearchHistoryTool
-GarboPageMarkdownTool
-ScreenshotTool
-GetElementPositionTool
-InterceptNetworkTool
-ParallelExtractionTool
+
+### Browser Control
+- `NavigateBrowserTool` - Navigate to URLs
+- `ClickElementTool` - Click elements
+- `TypeTextTool` - Type text into inputs
+- `ScrollPageTool` - Scroll pages
+- `KeyboardNavigationTool` - Press keyboard keys
+
+### Content Extraction
+- `ExtractContentTool` - Extract page content
+- `ParallelExtractionTool` - Extract from multiple selectors
+- `GarboPageMarkdownTool` - Export page as Markdown
+
+### Utility Tools
+- `WebSearchTool` - Search various search engines
+- `ScreenshotTool` - Capture screenshots
+- `CloudflareBypassTool` - Handle anti-bot challenges
+- `GetCurrentURLTool` - Get current page URL
+- `SearchHistoryTool` - Access cached searches
+
 
 
 #### **3. Caching Infrastructure**
