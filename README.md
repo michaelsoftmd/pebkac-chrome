@@ -38,7 +38,7 @@ Frankly, no LLM has been made that **is supposed to** fully operate Google Chrom
 The browser runs with noVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
 
-Or just give it a job and go do something else. Eat an apple. **[Read a book.](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)**.
+Or just give it a job and go do something else. Eat an apple. [Read a book.](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb).
 
 
 You operate it simply by sending messages through Open WebUI and watching its progress in the Zenbot Control Panel, which operates as a separate browser tab on your host machine. You can watch the LLM handling everything live. Zenbot will perform its duties and return some nicely-formatted results for you back in the chat window.
@@ -53,8 +53,11 @@ Basically, Zenbot’s vision is augmented. Not only is it excellent at text/data
 
 YOU CAN ALSO interact with the Chrome browser Zenbot uses. You can manually sign into websites and ask Zenbot to perform actions on the page. Think of it like a co-browser. It can go off on its own, collect the day’s news, find out about things, and (maybe) handle little jobs while you do other things, or you can drop in, hang-ten over the keyboard, and surf collaboratively. Remember, Zenbot and its browser are fully contained, so there’s no way the LLM can access your host PC.
 
-This whole project is both an entirely useful web co-browsing service and a stark artistic reminder of the realities of our modular, chronically-online based existences. We all exist in our little boxes with internet connections to view the outside world, and now more than ever our little boxes are subject to oversight and control by forces far more intelligent than us. I view this project as a black mirror (lol) to our modern life. It’s also never been done before. It’s also incredibly capable.
-
+This whole project is both an entirely useful web co-browsing service and a stark artistic reminder of the realities of our modular, chronically-online based existences. We all exist in our little boxes with internet connections to view the outside world, and now more than ever our little boxes are subject to oversight and control by forces far more intelligent than us. I view this project as a black mirror (lol) to our modern life.
+<br></br>
+It’s also never been done before.
+<br></br>
+It’s also incredibly capable.
 <br>
 </br>
 
