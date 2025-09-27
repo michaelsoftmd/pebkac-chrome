@@ -43,8 +43,7 @@ YOU CAN ALSO interact with the Chrome browser Zenbot uses. You can manually sign
 
 This whole project is both an entirely useful web co-browsing service and a stark artistic reminder of the realities of our modular, chronically-online based existences. We all exist in our little boxes with internet connections to view the outside world, and now more than ever our little boxes are subject to oversight and control by forces far more intelligent than us. I view this project as a black mirror (lol) to our modern life. It’s also never been done before. It’s also incredibly capable.
 
-<br>
-</br>
+## ✨ Technicals
 
 With a powerful enough LLM behind it, this setup is capable of:
 - Thinking (via LLM)
@@ -84,7 +83,7 @@ I would also highly recommend adjusting the extraction method to extract more te
 <br>
 </br>
 
-**And so, I introduce to you Zenbot, the web automation service without the automation. It's just a mathematical word-generator with a set of word-tools, let free on the internet.**
+#### And so, I introduce to you Zenbot, the web automation service without the automation. It's just a mathematical word-generator with a set of word-tools, let free on the internet.
 
 <br>
 </br>
