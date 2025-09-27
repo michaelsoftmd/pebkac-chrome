@@ -26,7 +26,7 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 📝 **Content Extraction** - Advanced text extraction using Trafilatura
 <br></br>
 
-### 🚀 Why Zenbot Outperforms Traditional Solutions
+### 🚀 Why Zenbot Outperforms Modern Solutions
 **The Game-Changer: LLMs Write Python, Not JSON**
 <br></br>
 Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, Zenbot's LLM writes actual Python code that executes browser actions. This means your AI will look at its own tools and write Python code to utilise them. This is impossible with LangChain/MCP's approach. They can only call predefined tools sequentially. Zenbot's LLM can write loops, conditions, error handling, and complex logic.
