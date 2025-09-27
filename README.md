@@ -9,8 +9,7 @@ Zenbot browses the web for you. It is a web nonautomation framework powered by S
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
 - Smolagents is "a barebones library for agents that think in code."
 
-Together, they fit to give your localised, secure, rambunctiously stupid LLM a manual and a set of tools to operate a web browser. The massive advantage to this is that everything is contained - the LLM, the web browser, and everything it uses is (almost) entirely kept inside a local, isolated network of little boxes that never get root access, but enjoy the full benefits of working in your system.
-
+Together, they fit to give your localised, secure, rambunctiously stupid LLM a manual and a set of tools to operate a web browser.
 
 
 ## ✨ Features
@@ -25,19 +24,25 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 🛡️ **Cloudflare Bypass** - Handles anti-bot challenges including reCAPTCHA
 - 👁️ **Visual Debugging** - Live browser view through noVNC
 - 📝 **Content Extraction** - Advanced text extraction using Trafilatura
+- 
 
-<br>
-</br>
+### 🚀 Why Zenbot Outperforms Traditional Solutions
+The Game-Changer: LLMs Write Python, Not JSON
+Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, Zenbot's LLM writes actual Python code that executes browser actions. This means your AI will look at its own tools and write Python code to utilise them. This is impossible with LangChain/MCP's approach. They can only call predefined tools sequentially. Zenbot's LLM can write loops, conditions, error handling, and complex logic.
 
-Important! Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no rigid workflows, no LangGraphs, no LangChains, and no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and a few APIs.
+This also means that Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API. The browser runs with noVNC and loads about:blank on startup.
 
-The browser runs with noVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
+Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
-Or just give it a job and go do something else. Eat an apple. Read a book.
+
+Or just give it a job and go do something else. Eat an apple. **[Read a book.](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)**.
+
 
 You operate it simply by sending messages through Open WebUI and watching its progress in the Zenbot Control Panel, which operates as a separate browser tab on your host machine. You can watch the LLM handling everything live. Zenbot will perform its duties and return some nicely-formatted results for you back in the chat window.
 
-How does Zenbot know what to do? By reading the page, of course, same as you. State of the art extraction technologies are built in to Zendriver's existing framework, giving it an enormous capability boost. I used Trafilatura to achieve this. 
+
+### 🚀 How does Zenbot know what to do?
+By reading the page, of course, same as you. State of the art extraction technologies are built in to Zendriver's existing framework, giving it an enormous capability boost. I used Trafilatura to achieve this. 
 
 - Trafilatura is “a cutting-edge Python package and command-line tool designed to gather text on the Web and simplify the process of turning raw HTML into structured, meaningful data.”
 
