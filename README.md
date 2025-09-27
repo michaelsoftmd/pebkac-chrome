@@ -33,9 +33,9 @@ Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, Zenbot
 
 This also means that Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API.
 
-Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome.
+No LLM has yet been made that **is supposed to** fully operate a web browser!
 
-The browser runs with noVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. Zenbot will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
+The browser runs with noVNC and loads about:blank on startup. You are warned. Zenbot is not C-3P0. Zenbot is a garden path. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While Zenbot is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
 
 Or just give it a job and go do something else. Eat an apple. [Read a book.](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb).
