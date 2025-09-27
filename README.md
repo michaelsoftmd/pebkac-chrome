@@ -11,6 +11,8 @@ Zenbot browses the web for you. It is a web nonautomation framework powered by S
 
 Together, they fit to give your localised, secure, rambunctiously stupid LLM a manual and a set of tools to operate a web browser. The massive advantage to this is that everything is contained - the LLM, the web browser, and everything it uses is (almost) entirely kept inside a local, isolated network of little boxes that never get root access, but enjoy the full benefits of working in your system.
 
+
+
 ## ✨ Features
 
 ### Core Capabilities
