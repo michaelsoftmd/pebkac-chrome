@@ -26,6 +26,8 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 👁️ **Visual Debugging** - Live browser view through noVNC
 - 📝 **Content Extraction** - Advanced text extraction using Trafilatura
 
+<br>
+</br>
 
 Important! Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no rigid workflows, no LangGraphs, no LangChains, and no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and a few APIs.
 
@@ -44,6 +46,9 @@ Basically, Zenbot’s vision is augmented. Not only is it excellent at text/data
 YOU CAN ALSO interact with the Chrome browser Zenbot uses. You can manually sign into websites and ask Zenbot to perform actions on the page. Think of it like a co-browser. It can go off on its own, collect the day’s news, find out about things, and (maybe) handle little jobs while you do other things, or you can drop in, hang-ten over the keyboard, and surf collaboratively. Remember, Zenbot and its browser are fully contained, so there’s no way the LLM can access your host PC.
 
 This whole project is both an entirely useful web co-browsing service and a stark artistic reminder of the realities of our modular, chronically-online based existences. We all exist in our little boxes with internet connections to view the outside world, and now more than ever our little boxes are subject to oversight and control by forces far more intelligent than us. I view this project as a black mirror (lol) to our modern life. It’s also never been done before. It’s also incredibly capable.
+
+<br>
+</br>
 
 ## ✨ Technicals
 
