@@ -24,7 +24,7 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 🛡️ **Cloudflare Bypass** - Handles anti-bot challenges including reCAPTCHA
 - 👁️ **Visual Debugging** - Live browser view through noVNC
 - 📝 **Content Extraction** - Advanced text extraction using Trafilatura
-- 
+<br></br>
 
 ### 🚀 Why Zenbot Outperforms Traditional Solutions
 **The Game-Changer: LLMs Write Python, Not JSON**
