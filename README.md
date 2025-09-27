@@ -27,7 +27,8 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 
 
 ### 🚀 Why Zenbot Outperforms Traditional Solutions
-The Game-Changer: LLMs Write Python, Not JSON
+**The Game-Changer: LLMs Write Python, Not JSON**
+<br></br>
 Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, Zenbot's LLM writes actual Python code that executes browser actions. This means your AI will look at its own tools and write Python code to utilise them. This is impossible with LangChain/MCP's approach. They can only call predefined tools sequentially. Zenbot's LLM can write loops, conditions, error handling, and complex logic.
 
 This also means that Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API. The browser runs with noVNC and loads about:blank on startup.
