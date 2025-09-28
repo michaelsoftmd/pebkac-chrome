@@ -155,13 +155,13 @@ async def stream_logs(container: str):
         }
     )
 
-@app.post("/api/control/stop-all")
-async def stop_all_containers():
-    """Stop all containers, remove them, and remove the network"""
+@app.post("/api/control/stop")
+async def stop_containers():
+    """Stop containers WITHOUT removing them"""
     try:
         results = []
-        
-        # Stop all containers
+
+        # Just stop, don't remove
         logger.info("Stopping all containers...")
         result = subprocess.run(
             ['podman', 'stop', '-a'],
@@ -170,17 +170,53 @@ async def stop_all_containers():
             timeout=30
         )
         results.append(f"Stop: {result.stdout}")
-        
-        # Remove all containers
-        logger.info("Removing all containers...")
+
+        return {
+            "status": "success",
+            "message": "All containers stopped (preserved for restart)",
+            "details": results
+        }
+
+    except subprocess.TimeoutExpired:
+        return {"status": "error", "message": "Command timed out"}
+
+@app.post("/api/control/start")
+async def start_containers():
+    """Start existing containers"""
+    try:
+        # Start existing containers
+        logger.info("Starting existing containers...")
         result = subprocess.run(
-            ['podman', 'rm', '-a'],
+            ['podman', 'compose', '--profile', 'full', 'start'],
             capture_output=True,
             text=True,
-            timeout=10
+            timeout=30
         )
-        results.append(f"Remove: {result.stdout}")
-        
+
+        return {
+            "status": "success",
+            "message": "Containers restarted",
+            "output": result.stdout
+        }
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@app.post("/api/control/reset")
+async def reset_containers():
+    """Full reset - remove and recreate containers (data loss warning)"""
+    try:
+        # This is the destructive option - should require confirmation
+        results = []
+
+        # Stop all
+        subprocess.run(['podman', 'stop', '-a'], capture_output=True)
+        results.append("Stopped all containers")
+
+        # Remove all
+        subprocess.run(['podman', 'rm', '-a'], capture_output=True)
+        results.append("Removed all containers")
+
         # Remove the network
         logger.info("Removing network...")
         result = subprocess.run(
@@ -190,24 +226,21 @@ async def stop_all_containers():
             timeout=5
         )
         results.append(f"Network: {result.stdout or 'Removed'}")
-        
+
+        # Recreate with compose
+        subprocess.run(['podman', 'compose', '--profile', 'full', 'up', '-d'],
+                      capture_output=True)
+        results.append("Recreated containers")
+
         return {
             "status": "success",
-            "message": "All containers stopped and network removed",
+            "message": "Full reset completed - ALL DATA LOST",
             "details": results
         }
-        
-    except subprocess.TimeoutExpired:
-        return {
-            "status": "error",
-            "message": "Command timed out"
-        }
+
     except Exception as e:
-        logger.error(f"Error stopping containers: {e}")
-        return {
-            "status": "error",
-            "message": str(e)
-        }
+        logger.error(f"Error resetting containers: {e}")
+        return {"status": "error", "message": str(e)}
 
 @app.post("/api/control/create-network")
 async def create_network():

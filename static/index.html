@@ -13,8 +13,8 @@
             --accent-green: #00ff88;
             --accent-orange: #ff8800;
             --accent-red: #ff4455;
-            --dark-bg: #0a0a0f;
-            --darker-bg: #000005;
+            --dark-bg: #1a1a22;
+            --darker-bg: #0f0f18;
             --card-bg: #161622;
             --border-color: #2a2a3a;
             --text-primary: #ffffff;
@@ -59,19 +59,23 @@
             min-height: 100vh;
         }
 
-        .header {
-            background: linear-gradient(135deg, var(--card-bg) 0%, rgba(22, 22, 34, 0.95) 100%);
-            border-bottom: 1px solid var(--border-color);
-            padding: 1.5rem 2rem;
+        .fixed-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: transparent;
+            padding: 1rem 2rem;
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            flex-wrap: nowrap;
-            gap: 1rem;
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-            min-height: 80px;
+            align-items: flex-start;
+            min-height: 60px;
+            pointer-events: none;
+        }
+
+        .fixed-header * {
+            pointer-events: auto;
         }
 
         .header::after {
@@ -95,27 +99,28 @@
             flex-direction: column;
             align-items: flex-start;
             flex-shrink: 0;
+            margin-top: 10px;
         }
 
         .zenbot-title {
             font-family: 'Orbitron', monospace;
-            font-size: 2.8rem;
+            font-size: 2.6rem;
             font-weight: 900;
             color: var(--zenbot-orange);
-            letter-spacing: 5px;
+            letter-spacing: 4px;
             position: relative;
             text-transform: uppercase;
             /* Aggressive graffiti with deep orange glow */
-            text-shadow: 
+            text-shadow:
                 4px 4px 0px #771100,
                 8px 8px 0px rgba(119, 17, 0, 0.6),
                 12px 12px 0px rgba(119, 17, 0, 0.4),
                 16px 16px 0px rgba(119, 17, 0, 0.2),
-                20px 20px 30px rgba(0, 0, 0, 0.9),
-                0 0 40px rgba(204, 51, 0, 0.6),
-                0 0 80px rgba(204, 51, 0, 0.3);
-            transform: rotate(-2.5deg) skew(-4deg) scale(1.05);
-            filter: drop-shadow(0 0 20px rgba(204, 51, 0, 0.4));
+                20px 20px 25px rgba(0, 0, 0, 0.9),
+                0 0 35px rgba(204, 51, 0, 0.6),
+                0 0 70px rgba(204, 51, 0, 0.3);
+            transform: rotate(-4deg) skew(-6deg) scale(1.08);
+            filter: drop-shadow(0 0 18px rgba(204, 51, 0, 0.4));
             z-index: 10;
         }
 
@@ -155,21 +160,21 @@
         }
 
         .btn {
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             background: var(--card-bg);
             color: var(--text-secondary);
             border: 1px solid var(--border-color);
             border-radius: 6px;
             cursor: pointer;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             transition: all 0.2s ease;
             position: relative;
-            min-width: 140px;
             text-align: center;
+            white-space: nowrap;
         }
 
         .btn:hover:not(:disabled) {
@@ -281,12 +286,43 @@
             flex: 1;
             display: flex;
             flex-direction: column;
+            margin-top: 0; /* Iframe extends behind transparent header */
+            padding: 0;
+        }
+
+        .bottom-section {
+            display: flex;
+            height: 350px;
+            flex-shrink: 0;
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            margin-top: 0;
+        }
+
+        .controls-section {
+            width: 300px;
+            padding: 1rem;
+            background: var(--darker-bg);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .controls-section .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
         }
 
         .vnc-section {
-            padding: 2rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 120px 50px 10px 50px;
             background: var(--darker-bg);
-            text-align: center;
+            height: calc(100vh - 360px);
+            min-height: 70vh;
         }
 
         .section-title {
@@ -299,16 +335,16 @@
         }
 
         .vnc-container {
-            display: flex;
             flex: 1;
-            min-width: 640px;
-            min-height: 480px;
+            display: flex;
             position: relative;
             background: linear-gradient(135deg, var(--card-bg) 0%, rgba(22, 22, 34, 0.8) 100%);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            margin: 0 auto;
             overflow: hidden;
+            height: 100%;
+            min-height: 480px;
+            min-width: 640px;
         }
 
         .vnc-container::before {
@@ -377,21 +413,24 @@
             width: 100%;
             height: 100%;
             border: none;
-            background: black;
+            background: #1a1a1a;
             display: none;
             pointer-events: auto;
             position: relative;
             z-index: 1;
+            min-width: 640px;
         }
 
         #vnc-iframe.active {
             display: block;
         }
 
-        /* Ensure noVNC scales properly inside iframe */
+        /* Ensure noVNC scales dynamically inside iframe */
         .vnc-container iframe {
             min-width: 640px;
             min-height: 480px;
+            max-width: 1920px;
+            max-height: 1080px;
         }
 
         .logs-section {
@@ -399,6 +438,7 @@
             display: flex;
             flex-direction: column;
             background: var(--card-bg);
+            min-width: 0; /* Allow shrinking */
         }
 
         .log-controls {
@@ -422,21 +462,23 @@
 
         .log-tabs {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.4rem;
+            flex-wrap: nowrap;
         }
 
         .log-tab {
-            padding: 0.5rem 1rem;
+            padding: 0.4rem 0.6rem;
             background: transparent;
             border: 1px solid var(--border-color);
             color: var(--text-secondary);
             cursor: pointer;
             border-radius: 4px;
             transition: all 0.2s;
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.25px;
             font-weight: 500;
+            white-space: nowrap;
         }
 
         .log-tab:hover {
@@ -455,14 +497,13 @@
             background: var(--darker-bg);
             color: var(--accent-green);
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8125rem;
-            padding: 1.5rem 2rem;
+            font-size: 0.75rem;
+            padding: 1rem;
             overflow-y: auto;
             white-space: pre-wrap;
             word-wrap: break-word;
-            line-height: 1.5;
-            max-height: 400px;
-            min-height: 300px;
+            line-height: 1.4;
+            min-height: 250px;
         }
 
         .log-line {
@@ -517,10 +558,11 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .header {
-                padding: 1rem;
+            .fixed-header {
+                padding: 0.75rem 1rem;
                 flex-direction: column;
                 text-align: center;
+                min-height: 50px;
             }
 
             .zenbot-logo {
@@ -528,29 +570,54 @@
             }
 
             .zenbot-title {
-                font-size: 2.5rem;
-                letter-spacing: 4px;
+                font-size: 2.0rem;
+                letter-spacing: 3px;
+                transform: rotate(-3deg) skew(-4deg) scale(1.05);
+            }
+
+            .main-content {
+                margin-top: 0;
             }
 
             .vnc-section {
-                padding: 1rem;
+                padding: 90px 30px 0 30px;
+                height: calc(100vh - 300px);
+                min-height: 60vh;
+            }
+
+            .bottom-section {
+                flex-direction: column;
+                min-height: auto;
+            }
+
+            .controls-section {
+                width: 100%;
+                border-left: none;
+                border-top: 1px solid var(--border-color);
+            }
+
+            .controls-section .controls {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
             }
 
             .log-controls {
-                padding: 1rem;
+                padding: 0.75rem;
                 flex-direction: column;
-                gap: 1rem;
+                gap: 0.5rem;
                 align-items: flex-start;
             }
 
-            .log-viewer {
-                padding: 1rem;
-                font-size: 0.75rem;
+            .log-tabs {
+                flex-wrap: wrap;
+                gap: 0.3rem;
             }
 
-            .controls {
-                width: 100%;
-                justify-content: center;
+            .log-viewer {
+                padding: 0.75rem;
+                font-size: 0.7rem;
+                min-height: 200px;
             }
         }
 
@@ -575,16 +642,11 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <!-- Fixed top header -->
+        <div class="fixed-header">
             <div class="zenbot-logo">
                 <div class="zenbot-title">ZENBOT</div>
                 <div class="zenbot-subtitle">Chrome NonAutomation Platform</div>
-            </div>
-            <div class="controls">
-                <button id="compose-up" class="btn btn-boot" onclick="composeUp()">Boot System</button>
-                <button id="vnc-toggle" class="btn btn-primary" onclick="toggleVNC()">Start VNC</button>
-                <button id="copy-exports" class="btn btn-secondary" onclick="copyExports()">Copy Exports</button>
-                <button id="stop-all" class="btn btn-danger" onclick="stopAll()">Stop Services</button>
             </div>
             <div class="status-indicator">
                 <span id="connection-status" class="status disconnected">Offline</span>
@@ -598,7 +660,7 @@
                     <div id="vnc-placeholder" class="vnc-placeholder">
                         <div class="icon">▣</div>
                         <h3>Display Ready</h3>
-                        <p>640 × 480 resolution</p>
+                        <p>Dynamic resolution</p>
                         <p>Click "Start VNC" to connect to remote desktop</p>
                     </div>
                     <iframe
@@ -608,22 +670,34 @@
                 </div>
             </div>
 
-            <div class="logs-section">
-                <div class="log-controls">
-                    <h3>System Logs</h3>
-                    <div class="log-tabs">
-                        <button class="log-tab active" onclick="switchLog('openapi-tools')">API Gateway</button>
-                        <button class="log-tab" onclick="switchLog('zendriver')">Browser Engine</button>
-                        <button class="log-tab" onclick="switchLog('llama-cpp-server')">AI Core</button>
-                        <button class="log-tab" onclick="switchLog('open-webui')">Web Interface</button>
+            <div class="bottom-section">
+                <div class="logs-section">
+                    <div class="log-controls">
+                        <h3>System Logs</h3>
+                        <div class="log-tabs">
+                            <button class="log-tab active" onclick="switchLog('openapi-tools')">API</button>
+                            <button class="log-tab" onclick="switchLog('zendriver')">Browser</button>
+                            <button class="log-tab" onclick="switchLog('llama-cpp-server')">AI Core</button>
+                            <button class="log-tab" onclick="switchLog('open-webui')">WebUI</button>
+                        </div>
+                    </div>
+
+                    <div id="log-viewer" class="log-viewer">
+                        <div class="log-line info">ZENBOT Chrome NonAutomation Platform - Initializing...</div>
+                        <div class="log-line info">System components loading...</div>
+                        <div class="log-line info">Ready for operation</div>
+                        <div class="log-line warning">Connecting to log streams...</div>
                     </div>
                 </div>
 
-                <div id="log-viewer" class="log-viewer">
-                    <div class="log-line info">ZENBOT Chrome NonAutomation Platform - Initializing...</div>
-                    <div class="log-line info">System components loading...</div>
-                    <div class="log-line info">Ready for operation</div>
-                    <div class="log-line warning">Connecting to log streams...</div>
+                <div class="controls-section">
+                    <h3 style="color: var(--primary-cyan); font-size: 0.875rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem;">System Controls</h3>
+                    <div class="controls">
+                        <button id="system-toggle" class="btn btn-boot" onclick="toggleSystem()">Boot System</button>
+                        <button id="vnc-toggle" class="btn btn-primary" onclick="toggleVNC()">Start VNC</button>
+                        <button id="copy-exports" class="btn btn-secondary" onclick="copyExports()">Copy Exports</button>
+                        <button id="reset-containers" class="btn btn-danger" onclick="resetContainers()">DESTROY</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -642,6 +716,17 @@
         // Initialize on load
         window.addEventListener('load', () => {
             connectToLogs(currentLogSource);
+        });
+
+        // Handle window resize for VNC scaling
+        window.addEventListener('resize', () => {
+            if (vncActive) {
+                const iframe = document.getElementById('vnc-iframe');
+                if (iframe) {
+                    // Trigger VNC to recalculate size
+                    iframe.contentWindow?.postMessage({type: 'resize'}, '*');
+                }
+            }
         });
 
         // Clean up connections when page is closed or hidden
@@ -672,12 +757,19 @@
             vncActive = !vncActive;
             
             if (vncActive) {
-                iframe.src = 'http://localhost:6080/vnc.html?autoconnect=true&resize=scale&view_clip=1';
+                // Calculate optimal resolution based on container size
+                const container = iframe.parentElement;
+                const maxWidth = Math.min(container.offsetWidth, 1920);
+                const maxHeight = Math.min(container.offsetHeight, 1080);
+                const minWidth = Math.max(640, maxWidth);
+                const minHeight = Math.max(480, maxHeight);
+
+                iframe.src = `http://localhost:6080/vnc.html?autoconnect=true&resize=scale&view_clip=false&quality=9&compression=0&reconnect=true&bell=false&shared=true`;
                 iframe.classList.add('active');
                 placeholder.style.display = 'none';
                 button.textContent = 'Restart VNC';
                 updateStatus('connecting');
-                addLogLine('VNC: Establishing connection...', 'info');
+                addLogLine(`VNC: Establishing connection (scaling to container size)...`, 'info');
                 
                 setTimeout(() => {
                     updateStatus('connected');
@@ -711,71 +803,130 @@
             statusEl.textContent = statusMap[status] || status;
         }
 
-        async function stopAll() {
-            const button = document.getElementById('stop-all');
-            if (!confirm('This will stop all containers and remove the network. Continue?')) {
+
+        async function resetContainers() {
+            if (!confirm('DESTROY ALL DATA and recreate containers? This cannot be undone!')) {
                 return;
             }
-            
+
+            const button = document.getElementById('reset-containers');
             button.disabled = true;
-            button.textContent = 'Stopping...';
-            addLogLine('SYSTEM: Initiating shutdown sequence...', 'warning');
-            
+            button.textContent = 'Resetting...';
+            addLogLine('SYSTEM: DESTROYING all data...', 'error');
+
             try {
-                const response = await fetch('/api/control/stop-all', { method: 'POST' });
+                const response = await fetch('/api/control/reset', { method: 'POST' });
                 const result = await response.json();
-                
+
                 if (result.status === 'success') {
-                    addLogLine('SYSTEM: All services stopped successfully', 'info');
+                    addLogLine('SYSTEM: Destruction completed - all data destroyed', 'info');
+                    showStopButton();
                 } else {
-                    addLogLine(`SYSTEM: Shutdown failed - ${result.message}`, 'error');
+                    addLogLine(`SYSTEM: Destroy failed - ${result.message}`, 'error');
                 }
             } catch (error) {
                 addLogLine(`SYSTEM: Error - ${error.message}`, 'error');
             } finally {
                 button.disabled = false;
-                button.textContent = 'Stop Services';
+                button.textContent = 'DESTROY';
             }
         }
 
-        async function composeUp() {
-            const button = document.getElementById('compose-up');
-            button.disabled = true;
-            button.textContent = 'Starting...';
+        let systemRunning = false;
 
-            // Re-enable log reconnection when starting services
-            shouldReconnect = true;
-            retryCount = 0;
+        async function toggleSystem() {
+            const button = document.getElementById('system-toggle');
 
-            addLogLine('SYSTEM: Creating network infrastructure...', 'info');
+            if (!systemRunning) {
+                // Starting system
+                button.disabled = true;
+                button.textContent = 'Starting...';
 
-            try {
-                // First create the network
-                const networkResponse = await fetch('/api/control/create-network', { method: 'POST' });
-                const networkResult = await networkResponse.json();
+                // Re-enable log reconnection when starting services
+                shouldReconnect = true;
+                retryCount = 0;
 
-                if (networkResult.status === 'success') {
-                    addLogLine('SYSTEM: Network created successfully', 'info');
-                } else {
-                    addLogLine('SYSTEM: Network already exists or created', 'warning');
+                addLogLine('SYSTEM: Creating network infrastructure...', 'info');
+
+                let startupSuccess = false;
+
+                try {
+                    // First create the network
+                    const networkResponse = await fetch('/api/control/create-network', { method: 'POST' });
+                    const networkResult = await networkResponse.json();
+
+                    if (networkResult.status === 'success') {
+                        addLogLine('SYSTEM: Network created successfully', 'info');
+                    } else {
+                        addLogLine('SYSTEM: Network already exists or created', 'warning');
+                    }
+
+                    addLogLine('SYSTEM: Starting service stack...', 'info');
+
+                    // Then start the services
+                    const response = await fetch('/api/control/compose-up', { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        addLogLine('SYSTEM: All services started successfully', 'info');
+                        startupSuccess = true;
+                    } else {
+                        addLogLine(`SYSTEM: Startup failed - ${result.message || 'Unknown error'}`, 'error');
+                    }
+                } catch (error) {
+                    addLogLine(`SYSTEM: Error - ${error.message}`, 'error');
                 }
 
-                addLogLine('SYSTEM: Starting service stack...', 'info');
-
-                // Then start the services
-                const response = await fetch('/api/control/compose-up', { method: 'POST' });
-                const result = await response.json();
-
-                if (result.status === 'success') {
-                    addLogLine('SYSTEM: All services started successfully', 'info');
+                // Always update button state
+                if (startupSuccess) {
+                    systemRunning = true;
+                    button.textContent = 'Stop System';
+                    button.className = 'btn btn-danger';
                 } else {
-                    addLogLine(`SYSTEM: Startup failed - ${result.message}`, 'error');
+                    systemRunning = false;
+                    button.textContent = 'Boot System';
+                    button.className = 'btn btn-boot';
                 }
-            } catch (error) {
-                addLogLine(`SYSTEM: Error - ${error.message}`, 'error');
-            } finally {
+
                 button.disabled = false;
-                button.textContent = 'Boot System';
+            } else {
+                // Stopping system
+                if (!confirm('Stop all containers? (Data will be preserved)')) {
+                    return;
+                }
+
+                button.disabled = true;
+                button.textContent = 'Stopping...';
+                addLogLine('SYSTEM: Stopping containers (preserving data)...', 'warning');
+
+                let stopSuccess = false;
+
+                try {
+                    const response = await fetch('/api/control/stop', { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        addLogLine('SYSTEM: Containers stopped - data preserved', 'info');
+                        stopSuccess = true;
+                    } else {
+                        addLogLine(`SYSTEM: Stop failed - ${result.message || 'Unknown error'}`, 'error');
+                    }
+                } catch (error) {
+                    addLogLine(`SYSTEM: Error - ${error.message}`, 'error');
+                }
+
+                // Always update button state
+                if (stopSuccess) {
+                    systemRunning = false;
+                    button.textContent = 'Boot System';
+                    button.className = 'btn btn-boot';
+                } else {
+                    // If stop failed, assume system is still running
+                    button.textContent = 'Stop System';
+                    button.className = 'btn btn-danger';
+                }
+
+                button.disabled = false;
             }
         }
 
