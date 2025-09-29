@@ -85,8 +85,7 @@ services:
       "-c", "${LLAMACPP_CONTEXT:-4096}",
       "-b", "${LLAMACPP_BATCH:-1024}",
       "-ub", "${LLAMACPP_UBATCH:-512}",
-#      "--n-cpu-moe", havent got this one yet, nbd
-      "--flash-attn",
+      "--flash-attn", "auto",
       "--mlock",
       "-sm", "layer",
       "--jinja",
@@ -136,11 +135,9 @@ services:
       - "127.0.0.1:5910:5910"
       - "127.0.0.1:6080:6080"
     volumes:
-      - swayvnc-wayvnc-certs:/certs        # Keep - needed for VNC
-      # KEEP THIS - Critical for persistent browser sessions
-      - /mnt/ssd/podman/browser-session-data:/app/session-data:rw
+      - swayvnc-wayvnc-certs:/certs
     environment:
-      - RENDER_GROUP_GID=992
+      - RENDER_GROUP_GID= #or your own
       - SWAY_RESOLUTION=${SWAY_RESOLUTION:-640x480}
       - WAYVNC_PORT=5910
       - WAYVNC_ENABLE_AUTH=false
@@ -155,7 +152,7 @@ services:
       - label:disable
     group_add:
       - video
-      - "992"
+      - "xxx" #or your own
     restart: unless-stopped
     profiles: ["zendriver", "webui", "llamacpp", "openhands", "full"]
 
