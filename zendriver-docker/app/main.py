@@ -1159,14 +1159,18 @@ async def list_network_requests(
                     "type": event.type_.value if event.type_ else None
                 })
         
-        # Add handler
+        # Add handler with guaranteed cleanup
         tab.add_handler(cdp.network.RequestWillBeSent, request_handler)
-        
-        # Wait a bit to collect requests
-        await asyncio.sleep(2)
-        
-        # Remove handler
-        tab.remove_handlers(cdp.network.RequestWillBeSent, request_handler)
+
+        try:
+            # Wait a bit to collect requests
+            await asyncio.sleep(2)
+        finally:
+            # ALWAYS remove handler, even if exception occurs
+            try:
+                tab.remove_handlers(cdp.network.RequestWillBeSent, request_handler)
+            except Exception as cleanup_error:
+                logger.warning(f"Failed to remove network handler: {cleanup_error}")
 
         return {
             "status": "success",

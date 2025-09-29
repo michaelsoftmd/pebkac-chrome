@@ -109,7 +109,7 @@ class CacheManager:
             await self.memory_cache.set(key, None, 0)
 
     async def _periodic_cleanup(self):
-        """Clean up expired entries every 5 minutes"""
+        """Clean up expired entries every 5 minutes with proper error handling"""
         while True:
             await asyncio.sleep(300)
             try:
@@ -117,6 +117,7 @@ class CacheManager:
                 logger.info(f"Cache cleanup completed: {self.memory_cache.get_stats()}")
             except Exception as e:
                 logger.error(f"Cache cleanup error: {e}")
+                # Continue running even if cleanup fails to prevent total breakdown
 
 def cached(prefix: str, ttl: Optional[int] = None):
     """Decorator for caching function results"""

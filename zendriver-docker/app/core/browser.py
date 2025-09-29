@@ -169,10 +169,10 @@ class BrowserManager:
 
     async def _create_browser(self):
         """Create browser with persistent session data"""
-        # Kill any zombie Chrome processes first
+        # Kill old Chrome processes more selectively (only oldest ones)
         try:
             subprocess.run(
-                ["pkill", "-f", "chrome.*zenbot_profiles"],
+                ["pkill", "-f", "-o", "chrome.*zenbot_profiles"],
                 capture_output=True,
                 timeout=5
             )
@@ -394,5 +394,10 @@ class BrowserManager:
             except:
                 pass
             finally:
+                # Explicitly clean up global references
                 _browser = None
                 _browser_tab = None
+
+                # Force garbage collection of browser resources
+                import gc
+                gc.collect()
