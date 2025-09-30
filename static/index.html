@@ -66,7 +66,7 @@
             right: 0;
             z-index: 1000;
             background: transparent;
-            padding: 1rem 2rem;
+            padding: 20px 2rem;
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
@@ -99,7 +99,7 @@
             flex-direction: column;
             align-items: flex-start;
             flex-shrink: 0;
-            margin-top: 10px;
+            margin-top: 0;
         }
 
         .zenbot-title {
@@ -110,17 +110,16 @@
             letter-spacing: 4px;
             position: relative;
             text-transform: uppercase;
-            /* Aggressive graffiti with deep orange glow */
+            /* Enhanced graffiti with strong glow */
             text-shadow:
-                4px 4px 0px #771100,
-                8px 8px 0px rgba(119, 17, 0, 0.6),
-                12px 12px 0px rgba(119, 17, 0, 0.4),
-                16px 16px 0px rgba(119, 17, 0, 0.2),
-                20px 20px 25px rgba(0, 0, 0, 0.9),
-                0 0 35px rgba(204, 51, 0, 0.6),
-                0 0 70px rgba(204, 51, 0, 0.3);
+                3px 3px 0px #771100,
+                6px 6px 0px rgba(119, 17, 0, 0.6),
+                9px 9px 0px rgba(119, 17, 0, 0.4),
+                0 0 25px rgba(204, 51, 0, 0.7),
+                0 0 50px rgba(204, 51, 0, 0.5),
+                0 0 75px rgba(204, 51, 0, 0.3);
             transform: rotate(-4deg) skew(-6deg) scale(1.08);
-            filter: drop-shadow(0 0 18px rgba(204, 51, 0, 0.4));
+            filter: drop-shadow(0 0 15px rgba(204, 51, 0, 0.5));
             z-index: 10;
         }
 
@@ -554,12 +553,13 @@
             align-items: center;
             gap: 1rem;
             flex-shrink: 0;
+            margin-top: 5px;
         }
 
         /* Responsive */
         @media (max-width: 768px) {
             .fixed-header {
-                padding: 0.75rem 1rem;
+                padding: 20px 1rem;
                 flex-direction: column;
                 text-align: center;
                 min-height: 50px;
@@ -567,12 +567,23 @@
 
             .zenbot-logo {
                 align-items: center;
+                margin-top: 0;
+            }
+
+            .status-indicator {
+                margin-top: 8px;
             }
 
             .zenbot-title {
                 font-size: 2.0rem;
                 letter-spacing: 3px;
                 transform: rotate(-3deg) skew(-4deg) scale(1.05);
+                text-shadow:
+                    2px 2px 0px #771100,
+                    4px 4px 0px rgba(119, 17, 0, 0.6),
+                    0 0 20px rgba(204, 51, 0, 0.6),
+                    0 0 40px rgba(204, 51, 0, 0.4);
+                filter: drop-shadow(0 0 12px rgba(204, 51, 0, 0.5));
             }
 
             .main-content {

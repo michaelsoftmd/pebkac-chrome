@@ -22,17 +22,18 @@ _browser_tab = None
 _browser_lock = asyncio.Lock()
 _tab_creation_lock = asyncio.Lock()  # Separate lock for tab operations
 
-async def is_browser_alive(browser_or_tab) -> bool:
-    """Centralized browser/tab health check"""
+async def is_browser_alive(browser_or_tab) -> tuple[bool, str]:
+    """Centralized browser/tab health check with detailed error reporting"""
     try:
         if hasattr(browser_or_tab, 'evaluate'):
             await browser_or_tab.evaluate("1")
         else:
             _ = browser_or_tab.tabs
-        return True
+        return True, "healthy"
     except Exception as e:
-        logger.debug(f"Browser health check failed: {e}")
-        return False
+        error_msg = f"Browser health check failed: {e}"
+        logger.warning(error_msg)  # Changed from debug to warning for better visibility
+        return False, error_msg
 
 async def find_element_safe(tab, selector: str, timeout: int = TIMEOUTS.element_find, raise_on_missing: bool = True):
     """Standardized element finding with consistent error handling"""
@@ -60,6 +61,7 @@ class BrowserManager:
     def __init__(self, settings):
         self.settings = settings
         self.tab_pool = None
+        self._session_restore_failed = False
 
         self.secure_base = self._create_secure_base_dir()
 
@@ -118,9 +120,13 @@ class BrowserManager:
 
         async with _browser_lock:
             # Check if browser exists and is alive
-            if _browser and await is_browser_alive(_browser):
-                logger.debug("Browser instance is alive")
-                return _browser
+            if _browser:
+                is_alive, health_msg = await is_browser_alive(_browser)
+                if is_alive:
+                    logger.debug("Browser instance is alive")
+                    return _browser
+                else:
+                    logger.warning(f"Browser health check failed: {health_msg}")
 
             # Browser is dead or missing, clean up
             if _browser:
@@ -142,14 +148,22 @@ class BrowserManager:
         global _browser_tab
 
         # Quick check without lock (double-checked locking pattern)
-        if _browser_tab and await is_browser_alive(_browser_tab):
-            return _browser_tab
+        if _browser_tab:
+            is_alive, health_msg = await is_browser_alive(_browser_tab)
+            if is_alive:
+                return _browser_tab
+            else:
+                logger.warning(f"Tab health check failed: {health_msg}")
 
         # Now acquire lock for creation/validation
         async with _tab_creation_lock:  # Use separate lock, not _browser_lock
             # Re-check after acquiring lock
-            if _browser_tab and await is_browser_alive(_browser_tab):
-                return _browser_tab
+            if _browser_tab:
+                is_alive, health_msg = await is_browser_alive(_browser_tab)
+                if is_alive:
+                    return _browser_tab
+                else:
+                    logger.warning(f"Tab health check failed after lock: {health_msg}")
             _browser_tab = None
 
             # Get or create tab
@@ -283,6 +297,9 @@ class BrowserManager:
 
         except Exception as e:
             logger.error(f"Session restore failed: {e}")
+            # Set flag to indicate session restore failure for health monitoring
+            self._session_restore_failed = True
+            # Could implement retry logic here in the future
 
     async def save_session_data(self):
         """Save session data to persistent storage"""

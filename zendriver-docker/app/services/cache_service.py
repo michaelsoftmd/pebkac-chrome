@@ -328,6 +328,8 @@ class ExtractorCacheService:
         
         except Exception as e:
             logger.error(f"Error learning selector performance: {e}")
+            # Re-raise for critical performance tracking failures
+            raise RuntimeError(f"Failed to learn selector performance for {url}: {e}") from e
 
 
 class CacheInvalidationService:

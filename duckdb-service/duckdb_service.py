@@ -191,7 +191,8 @@ async def lifespan(app: FastAPI):
         logger.info("DuckDB pool initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize DuckDB pool: {e}")
-        # Don't fail startup completely, but log the error
+        logger.critical("Database initialization failure - service cannot operate without database")
+        raise RuntimeError(f"Critical database initialization failure: {e}") from e
     yield
     # Shutdown
     logger.info("Shutting down DuckDB Cache Service...")
