@@ -296,14 +296,13 @@ body::before {
     display: flex;
     flex-direction: column;
     min-width: 0;
-    padding-left: 2rem;
-    background: var(--card-bg);
+    margin-left: 2rem;
 }
 
 .controls-section {
     width: 220px;
     padding: 1rem;
-    padding-right: 2rem;
+    margin-right: 2rem;
     background: var(--darker-bg);
     border-left: 1px solid var(--border-color);
     display: flex;
@@ -773,131 +772,37 @@ body::before {
 .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem 1rem 1rem 0;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
     min-height: 0;
 }
 
-.welcome-message {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-    min-height: 300px;
-}
-
-.vnc-init-message {
-    background: var(--darker-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 4px;
-    padding: 1.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    max-width: 600px;
-}
-
-.vnc-status {
-    color: var(--accent-green);
+.chat-prompt {
+    color: var(--text-secondary);
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
     font-size: 0.75rem;
-    font-weight: 500;
-    margin-bottom: 1rem;
-    letter-spacing: 0.5px;
-}
-
-.vnc-details {
-    color: var(--text-secondary);
-    font-size: 0.7rem;
-    line-height: 1.6;
-    margin-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 1rem;
-}
-
-.vnc-details > div {
-    margin-bottom: 0.3rem;
-}
-
-.vnc-ready {
-    color: var(--text-primary);
-    margin-top: 0.5rem;
-}
-
-.vnc-examples {
-    color: var(--text-muted);
-    font-size: 0.7rem;
-    line-height: 1.8;
-}
-
-.example-title {
-    color: var(--text-secondary);
-    margin-bottom: 0.5rem;
-    font-weight: 500;
-}
-
-.vnc-examples > div {
-    margin-bottom: 0.2rem;
+    padding: 0.5rem 0;
+    opacity: 0.8;
 }
 
 .message {
-    display: flex;
-    gap: 0.6rem;
-    max-width: 90%;
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    font-family: 'IBM Plex Mono', 'Consolas', monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: 0.3rem 0;
+    color: var(--text-primary);
 }
 
 .message.user {
-    align-self: flex-end;
-    flex-direction: row-reverse;
+    color: #c0c0dd;
 }
 
-.message-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 3px;
-    background: var(--text-secondary);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 500;
-    flex-shrink: 0;
-    font-size: 0.7rem;
-    color: var(--darker-bg);
-}
-
-.message.user .message-avatar {
-    background: var(--primary-purple);
-}
-
-.message-content {
-    background: var(--darker-bg);
-    padding: 0.65rem 0.9rem;
-    border-radius: 3px;
-    border: 1px solid var(--border-color);
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    font-family: 'IBM Plex Mono', 'Consolas', monospace;
-    font-size: 0.75rem;
-    font-weight: 400;
-    line-height: 1.45;
-    letter-spacing: 0;
-}
-
-.message.user .message-content {
-    background: rgba(124, 58, 237, 0.12);
-    border-color: rgba(124, 58, 237, 0.3);
-    color: var(--text-primary);
+.message.assistant {
+    color: #ffffff;
 }
 
 .chat-input-container {
