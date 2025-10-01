@@ -4,7 +4,9 @@ Zendriver Browser Automation API
 
 import os
 import asyncio
+import json
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, status, Header
+from fastapi.responses import StreamingResponse
 from contextlib import asynccontextmanager
 import uvicorn
 import logging
@@ -29,6 +31,7 @@ from app.services.element import ElementService
 from app.services.substack import SubstackService
 from app.services.cache_service import ExtractorCacheService
 from app.services.workflows import WorkflowService
+from app.services.agent_manager import AgentManager
 from app.utils.cache import CacheManager
 from zendriver.cdp import input_ as cdp_input
 from zendriver.core.intercept import BaseFetchInterception
@@ -1294,6 +1297,83 @@ async def take_screenshot(
         }
     except Exception as e:
         logger.error(f"Screenshot error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ===========================
+# Chat API for SmolAgents Integration
+# ===========================
+
+# Global agent manager instance
+_agent_manager: Optional[AgentManager] = None
+
+def get_agent_manager() -> AgentManager:
+    """Get or create agent manager singleton"""
+    global _agent_manager
+    if _agent_manager is None:
+        _agent_manager = AgentManager()
+    return _agent_manager
+
+# Request/Response models for chat
+class ChatRequest(BaseModel):
+    message: str
+    history: Optional[List[Dict[str, str]]] = []
+
+class ChatResponse(BaseModel):
+    status: str
+    result: Optional[Any] = None
+    error: Optional[str] = None
+
+@app.post("/api/chat")
+async def chat_endpoint(request: ChatRequest):
+    """
+    Chat endpoint with streaming agent execution
+
+    Request body:
+    {
+        "message": "user message",
+        "history": [{"role": "user", "content": "..."}, ...]
+    }
+    """
+
+    if not request.message:
+        raise HTTPException(status_code=400, detail="No message provided")
+
+    async def event_generator():
+        """Generate Server-Sent Events"""
+        try:
+            agent_manager = get_agent_manager()
+
+            async for event in agent_manager.run_agent_streaming(
+                request.message,
+                request.history
+            ):
+                yield f"data: {json.dumps(event)}\n\n"
+
+        except Exception as e:
+            logger.error(f"Chat streaming error: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'data': str(e)})}\n\n"
+
+        yield f"data: {json.dumps({'type': 'done', 'data': ''})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+@app.get("/api/agent/info")
+async def agent_info():
+    """Get information about the agent and available tools"""
+    try:
+        agent_manager = get_agent_manager()
+        return agent_manager.get_tool_info()
+    except Exception as e:
+        logger.error(f"Failed to get agent info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

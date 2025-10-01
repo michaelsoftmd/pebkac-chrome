@@ -10,13 +10,6 @@ networks:
         - subnet: 172.20.0.0/16
 
 volumes:
-  open-webui-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: /mnt/ssd/podman/webui-data
-      o: bind
-
   swayvnc-wayvnc-certs:
     driver: local
 
@@ -100,29 +93,6 @@ services:
     restart: unless-stopped
     profiles: ["llamacpp", "full"]
 
-  # Open WebUI
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: open-webui
-    networks:
-      - llm-network
-    security_opt:
-      - no-new-privileges
-    ports:
-      - "127.0.0.1:3000:8080"
-    volumes:
-      - open-webui-data:/app/backend/data
-    environment:
-      - ENABLE_OLLAMA_API=${ENABLE_OLLAMA:-false}
-      - OLLAMA_BASE_URL=http://ollama:11434
-      - OPENAI_API_BASE_URL=${ACTIVE_OPENAI_URL:-http://llama-cpp-server:8080/v1}
-      - WEBUI_AUTH=false
-      - ENABLE_RAG_WEB_SEARCH=true
-      - ENABLE_IMAGE_GENERATION=false
-      - WEBUI_URL=http://localhost:3000
-    restart: always
-    profiles: ["webui", "llamacpp", "llamafile", "ollama", "full"]
-
   # Zendriver Browser Automation
   zendriver:
     build:
@@ -138,13 +108,17 @@ services:
       - swayvnc-wayvnc-certs:/certs
     environment:
       - RENDER_GROUP_GID= #or your own
-      - SWAY_RESOLUTION=${SWAY_RESOLUTION:-640x480}
+      - SWAY_RESOLUTION=${SWAY_RESOLUTION:-1280x720}
       - WAYVNC_PORT=5910
       - WAYVNC_ENABLE_AUTH=false
       - MESA_LOADER_DRIVER_OVERRIDE=radeonsi
       - LIBVA_DRIVER_NAME=radeonsi
       - VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/radeon_icd.x86_64.json
-    devices: 
+      - ACTIVE_OPENAI_URL=http://llama-cpp-server:8080/v1
+      - ZENDRIVER_API_URL=http://localhost:8080
+      - DUCKDB_URL=http://duckdb-cache:9001
+      - SMOLAGENTS_MAX_STEPS=${SMOLAGENTS_MAX_STEPS:-10}
+    devices:
       - /dev/dri
       - /dev/kfd
     security_opt:
@@ -154,7 +128,7 @@ services:
       - video
       - "xxx" #or your own
     restart: unless-stopped
-    profiles: ["zendriver", "webui", "llamacpp", "openhands", "full"]
+    profiles: ["zendriver", "llamacpp", "full"]
 
   # Redis Cache Service (L1 Cache)
   redis-cache:
@@ -180,7 +154,7 @@ services:
       timeout: 3s
       retries: 3
     restart: unless-stopped
-    profiles: ["zendriver", "webui", "full"]
+    profiles: ["zendriver", "full"]
 
   # DuckDB Cache Service (L2 Cache)
   duckdb-cache:
@@ -204,31 +178,5 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
-    profiles: ["zendriver", "webui", "full"]
+    profiles: ["zendriver", "full"]
 
-  # OpenAPI Tool Server
-  openapi-tools:
-    build: 
-      context: ./openapi-server
-      dockerfile: Dockerfile
-    container_name: openapi-tools
-    networks:
-      - llm-network
-    ports:
-      - "127.0.0.1:9000:9000"
-    environment:
-      - ZENDRIVER_API_URL=http://zendriver:8080
-      - REDIS_URL=redis://redis-cache:6379
-      - DUCKDB_URL=http://duckdb-cache:9001
-      - HF_TOKEN=${HF_TOKEN}
-      - SMOLAGENTS_USE_CODE_AGENT=${SMOLAGENTS_USE_CODE_AGENT:-true}
-      - SMOLAGENTS_MAX_STEPS=${SMOLAGENTS_MAX_STEPS:-10}
-      - USE_CACHE=true
-    env_file:
-      - .env
-    depends_on:
-      - zendriver
-      - redis-cache
-      - duckdb-cache
-    restart: unless-stopped
-    profiles: ["zendriver", "webui", "full"]
