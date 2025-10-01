@@ -4,6 +4,8 @@
 
 UNRELATED TO THE OTHER ZENBOT PROJECT! This project shares NO RELATION WHATSOEVER to any other Zenbot-named repository that can be found online. This project was named after its originally forked project, Zendriver.
 
+This project is still being updated. It is functional, but remember to update regularly for improvements.
+
 Zenbot browses the web for you. It is a web nonautomation framework powered by SmolAgents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user. There is no MCP, no n8n, no LangChain or LangGraph. Zenbot employs the LLM's native ability to control a web browser by writing Python directly into it.
 
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
