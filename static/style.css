@@ -781,25 +781,62 @@ body::before {
 }
 
 .welcome-message {
-    text-align: center;
-    color: var(--text-secondary);
-    padding: 3rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    min-height: 300px;
 }
 
-.welcome-message h4 {
-    color: var(--zenbot-orange);
-    font-family: 'Inter', sans-serif;
-    font-size: 1.25rem;
+.vnc-init-message {
+    background: var(--darker-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    max-width: 600px;
+}
+
+.vnc-status {
+    color: var(--accent-green);
+    font-size: 0.75rem;
     font-weight: 500;
     margin-bottom: 1rem;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.5px;
 }
 
-.welcome-message p {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.875rem;
+.vnc-details {
+    color: var(--text-secondary);
+    font-size: 0.7rem;
     line-height: 1.6;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.vnc-details > div {
+    margin-bottom: 0.3rem;
+}
+
+.vnc-ready {
+    color: var(--text-primary);
+    margin-top: 0.5rem;
+}
+
+.vnc-examples {
     color: var(--text-muted);
+    font-size: 0.7rem;
+    line-height: 1.8;
+}
+
+.example-title {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.vnc-examples > div {
+    margin-bottom: 0.2rem;
 }
 
 .message {
