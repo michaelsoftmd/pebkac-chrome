@@ -1,9 +1,0 @@
-fastapi>=0.115.2
-uvicorn[standard]>=0.35.0
-httpx>=0.25.1
-aiohttp>=3.9.1
-redis==6.2
-aiofiles>=23.2.1
-nest-asyncio>=1.5.8
-smolagents[openai]>=1.21.1
-pydantic>=2.5.0
