@@ -7,6 +7,7 @@ import asyncio
 import json
 from fastapi import FastAPI, HTTPException, Query, Body, Depends, status, Header
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import uvicorn
 import logging
@@ -181,6 +182,15 @@ app = FastAPI(
     description="Enhanced browser automation API with Zendriver",
     version="4.0.0",
     lifespan=lifespan
+)
+
+# CORS middleware for control panel access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:8888"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ===========================

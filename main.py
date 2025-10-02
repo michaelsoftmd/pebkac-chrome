@@ -14,7 +14,6 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse
 from contextlib import asynccontextmanager
 import uvicorn
-import httpx
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -388,76 +387,6 @@ async def copy_tmp_to_exports():
 async def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "control-panel"}
-
-# ===========================
-# Chat API Proxy to Zendriver
-# ===========================
-
-@app.post("/api/chat")
-async def chat_proxy(request: Request):
-    """
-    Proxy chat requests to zendriver service.
-    Zendriver has AgentManager which talks to llama.cpp (8080) and uses tools.
-    """
-    try:
-        body = await request.json()
-        zendriver_url = "http://localhost:8090"
-
-        # Create client and stream outside the generator
-        client = httpx.AsyncClient(timeout=300.0)
-
-        async def event_generator():
-            try:
-                async with client.stream(
-                    "POST",
-                    f"{zendriver_url}/api/chat",
-                    json=body,
-                    headers={"Content-Type": "application/json"}
-                ) as response:
-                    async for chunk in response.aiter_bytes():
-                        yield chunk
-            finally:
-                await client.aclose()
-
-        return StreamingResponse(
-            event_generator(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "Connection": "keep-alive",
-                "X-Accel-Buffering": "no",
-            }
-        )
-
-    except httpx.ConnectError:
-        logger.error("Failed to connect to zendriver service")
-        return JSONResponse(
-            status_code=503,
-            content={"error": "Zendriver service unavailable"}
-        )
-    except Exception as e:
-        logger.error(f"Chat proxy error: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Chat proxy failed: {str(e)}"}
-        )
-
-@app.get("/api/agent/info")
-async def agent_info_proxy():
-    """Proxy agent info requests to zendriver service"""
-    try:
-        zendriver_url = "http://localhost:8090"
-
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(f"{zendriver_url}/api/agent/info")
-            return response.json()
-
-    except Exception as e:
-        logger.error(f"Agent info proxy error: {e}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"Failed to get agent info: {str(e)}"}
-        )
 
 if __name__ == "__main__":
     # Create static directory if it doesn't exist

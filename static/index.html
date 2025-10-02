@@ -548,22 +548,21 @@
 
             if (!message) return;
 
-            // Add user message to UI
+            // Add user message to UI and history
             addMessage('user', message);
+            conversationHistory.push({ role: 'user', content: message });
+            saveChatHistory();
             input.value = '';
 
-            // Show thinking status
             setAgentStatus('thinking', 'Thinking...');
 
             try {
-                // Send to backend with streaming
-                // NOTE: Send history WITHOUT current message (message field contains the new query)
-                const response = await fetch('/api/chat', {
+                const response = await fetch('http://localhost:8090/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         message: message,
-                        history: conversationHistory  // Past context only, not including current message
+                        history: conversationHistory.slice(0, -1)  // All history except current message
                     })
                 });
 
@@ -571,29 +570,23 @@
                     throw new Error(`HTTP ${response.status}`);
                 }
 
-                // Handle streaming response
-                await streamResponse(response, message);
-
-                // Save user message to history AFTER successful send
-                conversationHistory.push({ role: 'user', content: message });
-                saveChatHistory();
+                await streamResponse(response);
 
             } catch (error) {
                 console.error('Chat error:', error);
-                addMessage('assistant', `Error: ${error.message}`, true);
+                addMessage('assistant', `Connection error: ${error.message}`, true);
                 setAgentStatus('error', 'Error');
             } finally {
                 setAgentStatus('ready', 'Ready');
             }
         }
 
-        async function streamResponse(response, userMessage) {
+        async function streamResponse(response) {
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
 
             let assistantMessage = '';
             let messageElement = null;
-            let hadError = false;
 
             try {
                 while (true) {
@@ -615,34 +608,34 @@
                             if (json.type === 'status') {
                                 setAgentStatus('thinking', json.data);
                             } else if (json.type === 'content') {
-                                // Stream assistant response
                                 assistantMessage += json.data;
 
                                 if (!messageElement) {
-                                    messageElement = addMessage('assistant', assistantMessage);
-                                } else {
-                                    messageElement.querySelector('.message-content').textContent = assistantMessage;
+                                    messageElement = addMessage('assistant', '');
                                 }
+                                messageElement.textContent = '< ' + assistantMessage;
                             } else if (json.type === 'error') {
-                                hadError = true;
-                                const errorMsg = `Error: ${json.data}`;
-                                addMessage('assistant', errorMsg, true);
-                                conversationHistory.push({ role: 'assistant', content: errorMsg });
+                                addMessage('assistant', json.data, true);
+                                conversationHistory.push({ role: 'assistant', content: `Error: ${json.data}` });
                                 saveChatHistory();
+                                return;
+                            } else if (json.type === 'done') {
+                                break;
                             }
 
                         } catch (e) {
-                            console.error('JSON parse error:', e, data);
+                            console.error('JSON parse error:', e);
                         }
                     }
                 }
             } catch (e) {
-                console.error('Stream reading error:', e);
-                hadError = true;
+                console.error('Stream error:', e);
+                addMessage('assistant', `Stream error: ${e.message}`, true);
+                return;
             }
 
-            // Add assistant message to conversation history
-            if (assistantMessage && !hadError) {
+            // Save assistant response to history
+            if (assistantMessage) {
                 conversationHistory.push({ role: 'assistant', content: assistantMessage });
                 saveChatHistory();
             }
