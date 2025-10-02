@@ -673,14 +673,20 @@
         function clearChat() {
             if (!confirm('Clear conversation history?')) return;
 
+            // Clear conversation history
             conversationHistory = [];
             localStorage.removeItem('zenbot_chat_history');
+
+            // Reset chat display
             const messagesContainer = document.getElementById('chat-messages');
             messagesContainer.innerHTML = `
                 <div class="chat-prompt">
                     > Try searching DuckDuckGo for honeybees
                 </div>
             `;
+
+            // Reset agent status
+            setAgentStatus('ready', 'Ready');
         }
 
         // Handle Enter key in chat input and load chat history
