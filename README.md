@@ -121,7 +121,7 @@ I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs a
    - Set `group_add` entries to your actual render group GID (find with `getent group render`)
    - Adjust GPU settings for your hardware
 4. Configure `.env` file:
-   - Set `LLAMACPP_MODEL` to your GGUF model filename (must exist in `/mnt/ssd/podman/models/gguf/`)
+   - Set `LLAMACPP_MODEL` to your GGUF model filename (must exist in `/podman/models/gguf/`)
    - Set `LLAMACPP_GPU_LAYERS` based on your VRAM
    - Set `HF_TOKEN` if downloading models from HuggingFace
 5. Start the stack:
