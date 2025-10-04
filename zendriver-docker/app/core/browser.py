@@ -65,7 +65,8 @@ class BrowserManager:
 
         self.secure_base = self._create_secure_base_dir()
 
-        profile_id = hashlib.sha256(f"main_profile_{os.getpid()}".encode()).hexdigest()[:16]
+        # Use static profile name for persistence across container restarts
+        profile_id = "main"
         self.profile_dir = self.secure_base / f"profile_{profile_id}"
 
         self._safe_mkdir(self.profile_dir)
