@@ -3,8 +3,6 @@
 # Make working storage directories
 mkdir -p /your/podman/location/zendriver-data
 mkdir -p /your/podman/location/duckdb-data
-mkdir -p /your/podman/location/browser-session-data
-mkdir -p /your/podman/location/webui-data # or whatever your webui folder is called)
 mkdir -p /your/podman/location/models/gguf # this is where your model files should be located. if not, change them in .env
 
 # also add these too, maybe. I'm not sure about them:
@@ -16,8 +14,6 @@ mkdir storage - this is where most stuff goes, and you dont have permission to a
 # NEXT! Open terminal in Podman directory. To run this setup, you will almost ALWAYS need to run commands from this directory. Very important!
 
 # Build each individually to make sure there are no errors.
-podman build --network=host --no-cache -t openapi-tools ./openapi-server
-
 podman build --network=host --no-cache -t zendriver ./zendriver-docker
 
 podman build --network=host --no-cache -t duckdb-cache ./duckdb-service
@@ -57,7 +53,6 @@ openapi.json
 podman network rm podman_llm-network
 
 # View direct logs:
-podman logs -f openapi-tools
 podman logs -f zendriver
 
 # Stop/clean up service
@@ -84,6 +79,6 @@ radeontop
 # I have included a Dockerfile for a Podman-based Llama.cpp w/Vulkan build. To use, rename that file to Dockerfile, place in a folder "llama-vulan" in Podman working dir, cd to llama-vulkan, and run:
 podman build -t llama-vulkan .
 
-
-
+# Here's an image for Open WebUI
+podman pull ghcr.io/open-webui/open-webui:main
 
