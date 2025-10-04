@@ -141,7 +141,6 @@ async def periodic_session_save(browser_manager: BrowserManager):
         try:
             await asyncio.sleep(300)  # 5 minutes
             await browser_manager.save_session_data()
-            logger.debug("Session auto-saved")
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -385,74 +384,50 @@ async def click_element(
 # Cloudflare Handling
 # ===========================
 async def _get_challenge_indicators(tab):
-    """Unified challenge detection logic for both Cloudflare and reCAPTCHA"""
+    """Cloudflare challenge detection logic"""
     return await safe_evaluate(tab, """
         (() => {
             const indicators = {
-                // Cloudflare indicators
                 hasCfRay: !!document.querySelector('meta[name="cf-ray"]'),
                 hasChallengeForm: !!document.querySelector('form#challenge-form, form[action*="cdn-cgi"]'),
                 titleHasCloudflare: /cloudflare|checking|just a moment|checking your browser/i.test(document.title || ''),
-                hasCfScript: Array.from(document.scripts || []).some(s => 
+                hasCfScript: Array.from(document.scripts || []).some(s =>
                     s.src && s.src.includes('cloudflare')),
-                bodyTextCloudflare: /checking your browser|just a moment|please wait|ddos protection by cloudflare|ray id/i.test(document.body?.innerText || ''),
-                
-                // reCAPTCHA indicators
-                hasRecaptchaIframe: document.querySelectorAll('iframe[src*="recaptcha"], iframe[src*="google.com/recaptcha"], iframe[title="reCAPTCHA"]').length > 0,
-                hasRecaptchaElement: document.querySelectorAll('.g-recaptcha, .recaptcha, [class*="recaptcha"], [data-sitekey]').length > 0,
-                hasRecaptchaScript: Array.from(document.scripts || []).some(s => 
-                    s.src && (s.src.includes('recaptcha') || s.src.includes('google.com/recaptcha'))),
-                titleHasRecaptcha: /recaptcha|not a robot|verify you are human/i.test(document.title || ''),
-                bodyTextRecaptcha: /i'm not a robot|recaptcha|please verify|verify you are not a robot/i.test(document.body?.innerText || '')
+                bodyTextCloudflare: /checking your browser|just a moment|please wait|ddos protection by cloudflare|ray id/i.test(document.body?.innerText || '')
             };
             return indicators;
         })()
     """)
 
 async def _determine_challenge_type(indicators):
-    """Determine challenge type from unified indicators"""
+    """Determine if Cloudflare challenge is present"""
     if not indicators or not isinstance(indicators, dict):
-        return "none", False, False
-        
+        return "none", False
+
     is_cloudflare = any([
         indicators.get('titleHasCloudflare', False),
         indicators.get('hasChallengeForm', False),
         indicators.get('hasCfScript', False),
         indicators.get('bodyTextCloudflare', False)
     ])
-    
-    is_recaptcha = any([
-        indicators.get('hasRecaptchaIframe', False),
-        indicators.get('hasRecaptchaElement', False),
-        indicators.get('hasRecaptchaScript', False),
-        indicators.get('titleHasRecaptcha', False),
-        indicators.get('bodyTextRecaptcha', False)
-    ])
-    
-    if is_cloudflare and is_recaptcha:
-        challenge_type = "mixed"
-    elif is_cloudflare:
-        challenge_type = "cloudflare"
-    elif is_recaptcha:
-        challenge_type = "recaptcha"
-    else:
-        challenge_type = "none"
-    
-    return challenge_type, is_cloudflare, is_recaptcha
+
+    challenge_type = "cloudflare" if is_cloudflare else "none"
+
+    return challenge_type, is_cloudflare
 @app.get("/cloudflare/detect")
 async def detect_cloudflare(
     browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)]
 ):
     """Check if current page has Cloudflare challenge"""
     tab = await browser_manager.get_tab()
-    
+
     try:
         from app.utils.browser_utils import safe_evaluate
-        
-        # Use unified challenge detection
+
+        # Use challenge detection
         indicators = await _get_challenge_indicators(tab)
-        challenge_type, is_cloudflare, is_recaptcha = await _determine_challenge_type(indicators)
-        
+        challenge_type, is_cloudflare = await _determine_challenge_type(indicators)
+
         # Additional check for Cloudflare interactive challenges
         if is_cloudflare:
             from app.core.cloudflare import cf_is_interactive_challenge_present
@@ -461,156 +436,21 @@ async def detect_cloudflare(
                 challenge_type = "cloudflare_interactive"
         else:
             has_cf_interactive = False
-            
+
         return {
-            "status": "challenge_detected" if (is_cloudflare or is_recaptcha) else "no_challenge",
+            "status": "challenge_detected" if is_cloudflare else "no_challenge",
             "has_cloudflare": is_cloudflare,
-            "has_recaptcha": is_recaptcha,
-            "has_challenge": has_cf_interactive or is_recaptcha,
+            "has_challenge": has_cf_interactive,
             "challenge_type": challenge_type,
             "indicators": indicators or {}
         }
-        
+
     except Exception as e:
         logger.error(f"Cloudflare detection error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={"error": "detection_failed", "message": str(e)}
         )
-
-async def _solve_recaptcha_checkbox(tab, timeout: int = 15):
-    """
-    Find and click reCAPTCHA checkbox using precise coordinate-based clicking.
-    Returns (success: bool, message: str)
-    """
-    try:
-        logger.debug("Looking for reCAPTCHA checkbox...")
-
-        # Find the reCAPTCHA anchor iframe
-        iframe_selectors = [
-            'iframe[src*="google.com/recaptcha/api2/anchor"]',
-            'iframe[src*="google.com/recaptcha/enterprise/anchor"]',
-            'iframe[title="reCAPTCHA"]',
-            'iframe[name^="a-"][src*="recaptcha"]'
-        ]
-
-        anchor_frame = None
-        for selector in iframe_selectors:
-            try:
-                anchor_frame = await tab.find(selector, timeout=TIMEOUTS.element_find)
-                if anchor_frame:
-                    logger.info(f"Found reCAPTCHA iframe with selector: {selector}")
-                    break
-            except:
-                continue
-
-        if not anchor_frame:
-            return False, "No reCAPTCHA iframe found"
-
-        # Use precise coordinate clicking like Cloudflare method
-        try:
-            logger.info("Attempting to click reCAPTCHA checkbox using precise coordinates")
-
-            # Scroll iframe into view
-            await anchor_frame.scroll_into_view()
-            await asyncio.sleep(0.5)  # Wait for scroll to complete
-
-            # Re-find the element to get fresh node ID after scroll
-            anchor_frame = None
-            for selector in iframe_selectors:
-                try:
-                    anchor_frame = await tab.find(selector, timeout=2)
-                    if anchor_frame:
-                        break
-                except:
-                    continue
-
-            if not anchor_frame:
-                return False, "reCAPTCHA iframe disappeared after scroll"
-
-            # Get the iframe's box model for precise clicking
-            from zendriver import cdp
-
-            logger.debug(f"Getting box model for reCAPTCHA iframe (node_id: {anchor_frame.node.node_id})")
-            try:
-                box_model_result = await tab.send(
-                    cdp.dom.get_box_model(node_id=anchor_frame.node.node_id)
-                )
-            except Exception as e:
-                if "Could not find node" in str(e):
-                    # Try alternative approach - click by position
-                    try:
-                        logger.warning("Node ID stale, trying alternative position method")
-                        pos = await anchor_frame.get_position()
-                        if pos:
-                            click_x = pos.center[0] * 0.15  # 15% from left
-                            click_y = pos.center[1]
-                            await tab.mouse_click(click_x, click_y)
-                            logger.info("reCAPTCHA clicked using alternative position method")
-                            await asyncio.sleep(2)
-                            return True, "Clicked using alternative position method"
-                    except Exception as alt_e:
-                        logger.error(f"Alternative click method failed: {alt_e}")
-                    return False, f"Click failed: {str(e)}"
-                else:
-                    raise
-
-            # Extract coordinates from content quad
-            content_quad = box_model_result.content
-            x_coords = content_quad[0::2]  # x coordinates of 4 corners
-            y_coords = content_quad[1::2]  # y coordinates of 4 corners
-
-            min_x = min(x_coords)
-            max_x = max(x_coords)
-            min_y = min(y_coords)
-            max_y = max(y_coords)
-
-            # Calculate click position for reCAPTCHA checkbox
-            # reCAPTCHA checkbox is typically in the left part of the iframe
-            click_x = min_x + (max_x - min_x) * 0.15  # 15% from left edge
-            click_y = min_y + (max_y - min_y) * 0.5   # Center vertically
-
-            logger.debug(
-                f"reCAPTCHA iframe dimensions: width={max_x - min_x}, height={max_y - min_y}"
-            )
-            logger.debug(f"Calculated click coordinates: ({click_x}, {click_y})")
-
-            # Perform the precise mouse click
-            await tab.mouse_click(click_x, click_y)
-            logger.info("reCAPTCHA checkbox clicked using precise coordinates")
-
-            # Wait for click to register
-            await asyncio.sleep(2)
-
-            # Check if we passed (look for token)
-            from app.utils.browser_utils import safe_evaluate
-            token_check = await safe_evaluate(tab, """
-                (() => {
-                    const response = document.querySelector('[name="g-recaptcha-response"]');
-                    return response && response.value ? 'passed' : 'unknown';
-                })()
-            """)
-
-            if token_check == 'passed':
-                return True, "reCAPTCHA checkbox clicked - passed without challenge"
-
-            # Check if challenge iframe appeared
-            try:
-                challenge_frame = await tab.find('iframe[src*="bframe"]', timeout=TIMEOUTS.element_find)
-                if challenge_frame:
-                    return True, "reCAPTCHA checkbox clicked - challenge appeared (requires manual solving)"
-            except:
-                pass
-
-            return True, "reCAPTCHA checkbox clicked using precise coordinates"
-
-        except Exception as e:
-            logger.error(f"Error clicking reCAPTCHA: {e}")
-            return False, f"Coordinate click error: {str(e)}"
-
-    except Exception as e:
-        logger.error(f"Failed to solve reCAPTCHA: {e}")
-        return False, f"Error: {str(e)}"
 
 @app.post("/cloudflare/solve")
 async def solve_cloudflare_challenge(
@@ -620,14 +460,14 @@ async def solve_cloudflare_challenge(
 ):
     """Attempt to solve Cloudflare challenge if present"""
     tab = await browser_manager.get_tab()
-    
+
     try:
         from app.utils.browser_utils import safe_evaluate
-        
-        # Use unified challenge detection
+
+        # Use challenge detection
         indicators = await _get_challenge_indicators(tab)
-        challenge_type, is_cloudflare_page, is_recaptcha_page = await _determine_challenge_type(indicators)
-        
+        challenge_type, is_cloudflare_page = await _determine_challenge_type(indicators)
+
         # Solve Cloudflare challenge
         if is_cloudflare_page:
             from app.core.cloudflare import verify_cf
@@ -637,29 +477,13 @@ async def solve_cloudflare_challenge(
                 "message": "Cloudflare challenge solved",
                 "type": "cloudflare"
             }
-        
-        # Solve reCAPTCHA challenge
-        if is_recaptcha_page:
-            success, message = await _solve_recaptcha_checkbox(tab, timeout)
-            if success:
-                return {
-                    "status": "success",
-                    "message": message,
-                    "type": "recaptcha"
-                }
-            else:
-                return {
-                    "status": "error",
-                    "error": message,
-                    "type": "recaptcha"
-                }
-        
+
         # No challenge found
         return {
             "status": "no_challenge",
-            "message": "No Cloudflare or reCAPTCHA challenge found"
+            "message": "No Cloudflare challenge found"
         }
-        
+
     except TimeoutError as e:
         return {
             "status": "timeout",

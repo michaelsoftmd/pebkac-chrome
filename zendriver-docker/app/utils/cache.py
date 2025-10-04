@@ -114,7 +114,12 @@ class CacheManager:
             await asyncio.sleep(300)
             try:
                 await self.memory_cache.clear_expired()
-                logger.info(f"Cache cleanup completed: {self.memory_cache.get_stats()}")
+                stats = self.memory_cache.get_stats()
+                # Only log if there's something to report
+                if stats.get('items_count', 0) > 0:
+                    logger.info(f"Cache cleanup completed: {stats}")
+                else:
+                    logger.debug(f"Cache cleanup completed: {stats}")
             except Exception as e:
                 logger.error(f"Cache cleanup error: {e}")
                 # Continue running even if cleanup fails to prevent total breakdown

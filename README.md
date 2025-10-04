@@ -4,8 +4,6 @@
 
 UNRELATED TO THE OTHER ZENBOT PROJECT! This project shares NO RELATION WHATSOEVER to any other Zenbot-named repository that can be found online. This project was named after its originally forked project, Zendriver.
 
-This project is still being updated. It is functional, but remember to update regularly for improvements.
-
 Zenbot browses the web for you. It is a web nonautomation framework powered by SmolAgents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user. There is no MCP, no n8n, no LangChain or LangGraph. Zenbot employs the LLM's native ability to control a web browser by writing Python directly into it.
 
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
@@ -22,16 +20,17 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 🔒 **Persistent Sessions** - Maintains cookies and authentication across restarts
 - 📊 **Intelligent Caching** - Multi-tier cache system (Memory → Redis → DuckDB)
 - 🎯 **Selector Learning** - Optimises element selection strategies over time
-- 🛡️ **Cloudflare Bypass** - Handles anti-bot challenges including reCAPTCHA
+- 🛡️ **Cloudflare Bypass** - Handles anti-bot challenges
 - 👁️ **Visual Debugging** - Live browser view through noVNC at 1280x720
 - 📝 **Content Extraction** - Advanced text extraction using Trafilatura
+- 💬 **Chat Interface** - Minimal terminal-style UI for natural language interaction at localhost:8888
 
 ### 🚀 Why Zenbot Outperforms Traditional Solutions
 **The Game-Changer: LLMs Write Python, Not JSON**
 
 Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, Zenbot's LLM writes actual Python code that executes browser actions. This means your AI will look at its own tools and write Python code to utilise them. This is impossible with LangChain/MCP's approach. They can only call predefined tools sequentially. Zenbot's LLM can write loops, conditions, error handling, and complex logic.
 
-This also means that Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools and a couple libraries.
+This also means that Zenbot is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API.
 
 Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome.
 
@@ -120,8 +119,9 @@ I am of the opinion that Zenbot demonstrates how mainstream approaches to LLMs a
 3. Configure `docker-compose.yml`:
    - Set `group_add` entries to your actual render group GID (find with `getent group render`)
    - Adjust GPU settings for your hardware
+   - Just thoroughly check through the docker-compose files to suit your hardware. Same with the .env files. Be thorough.
 4. Configure `.env` file:
-   - Set `LLAMACPP_MODEL` to your GGUF model filename (must exist in `/podman/models/gguf/`)
+   - Set `LLAMACPP_MODEL` to your GGUF model filename (must exist in `/podman/models/gguf/`) unless setting yourself. This is the trickiest part that I can't help with.
    - Set `LLAMACPP_GPU_LAYERS` based on your VRAM
    - Set `HF_TOKEN` if downloading models from HuggingFace
 5. Start the stack:

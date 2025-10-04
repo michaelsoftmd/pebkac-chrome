@@ -6,6 +6,7 @@
     <title>ZENBOT - Chrome NonAutomation Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
 </head>
 <body>
     <div class="container">
@@ -56,8 +57,8 @@
                         </div>
 
                         <div id="chat-messages" class="chat-messages">
-                            <div class="chat-prompt">
-                                > Try searching DuckDuckGo for honeybees
+                            <div class="chat-prompt" id="initial-prompt">
+                                > loading...
                             </div>
                         </div>
 
@@ -613,7 +614,19 @@
                                 if (!messageElement) {
                                     messageElement = addMessage('assistant', '');
                                 }
-                                messageElement.textContent = '< ' + assistantMessage;
+
+                                // Check if JSON first, otherwise render as markdown
+                                if (isJSON(assistantMessage)) {
+                                    const formattedJSON = formatJSON(assistantMessage);
+                                    messageElement.textContent = '< ' + formattedJSON;
+                                    messageElement.classList.add('json-output');
+                                    messageElement.classList.remove('markdown-output');
+                                } else {
+                                    const markdownContent = marked.parse(assistantMessage);
+                                    messageElement.innerHTML = '< ' + markdownContent;
+                                    messageElement.classList.add('markdown-output');
+                                    messageElement.classList.remove('json-output');
+                                }
                             } else if (json.type === 'error') {
                                 addMessage('assistant', json.data, true);
                                 conversationHistory.push({ role: 'assistant', content: `Error: ${json.data}` });
@@ -641,6 +654,39 @@
             }
         }
 
+        function isJSON(content) {
+            const trimmed = content.trim();
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                try {
+                    JSON.parse(trimmed);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+            return false;
+        }
+
+        function formatJSON(content) {
+            // Try to detect and format JSON/dict content
+            const trimmed = content.trim();
+
+            // Check if content looks like JSON
+            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
+                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    return JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    // Not valid JSON, return as-is
+                    return content;
+                }
+            }
+
+            return content;
+        }
+
         function addMessage(role, content, isError = false) {
             const messagesContainer = document.getElementById('chat-messages');
 
@@ -652,7 +698,23 @@
             messageDiv.className = `message ${role}`;
 
             const prefix = role === 'user' ? '> ' : '< ';
-            messageDiv.textContent = prefix + content;
+
+            if (role === 'assistant') {
+                // Check if content is JSON first
+                if (isJSON(content)) {
+                    const formattedJSON = formatJSON(content);
+                    messageDiv.textContent = prefix + formattedJSON;
+                    messageDiv.classList.add('json-output');
+                } else {
+                    // Render markdown for assistant messages
+                    const markdownContent = marked.parse(content);
+                    messageDiv.innerHTML = prefix + markdownContent;
+                    messageDiv.classList.add('markdown-output');
+                }
+            } else {
+                // User messages stay plain text
+                messageDiv.textContent = prefix + content;
+            }
 
             if (isError) messageDiv.style.color = 'var(--accent-red)';
 
@@ -680,8 +742,8 @@
             // Reset chat display
             const messagesContainer = document.getElementById('chat-messages');
             messagesContainer.innerHTML = `
-                <div class="chat-prompt">
-                    > Try searching DuckDuckGo for honeybees
+                <div class="chat-prompt" id="initial-prompt">
+                    > ${getRandomPrompt()}
                 </div>
             `;
 
@@ -689,8 +751,30 @@
             setAgentStatus('ready', 'Ready');
         }
 
+        // Prompt suggestions
+        const promptSuggestions = [
+            'find the latest world news from three major news sites',
+            'search amazon for wireless headphones',
+            'what is the vine that reaches through brick',
+            'search for wandering honeybees',
+            'try your own suggestions',
+            'summarise this page'
+        ];
+
+        function getRandomPrompt() {
+            return promptSuggestions[Math.floor(Math.random() * promptSuggestions.length)];
+        }
+
+        function setInitialPrompt() {
+            const promptElement = document.getElementById('initial-prompt');
+            if (promptElement) {
+                promptElement.textContent = '> ' + getRandomPrompt();
+            }
+        }
+
         // Handle Enter key in chat input and load chat history
         document.addEventListener('DOMContentLoaded', () => {
+            setInitialPrompt();
             loadChatHistory();
 
             const input = document.getElementById('chat-input');

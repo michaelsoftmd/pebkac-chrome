@@ -314,7 +314,7 @@ class BrowserManager:
             for profile_dir in profile_dirs:
                 cookies_file = profile_dir / "Cookies"
                 if cookies_file.exists():
-                    logger.info(f"Found Cookies at: {cookies_file}")
+                    logger.debug(f"Found Cookies at: {cookies_file}")
                     source_dir = profile_dir
                     break
 
@@ -360,7 +360,7 @@ class BrowserManager:
                     total_size += size
                     logger.debug(f"Saved: {file_pattern} ({size} bytes)")
 
-            logger.info(f"Session saved: {len(saved_files)} files, {total_size/1024:.1f}KB total from {source_dir}")
+            logger.debug(f"Session saved: {len(saved_files)} files, {total_size/1024:.1f}KB total from {source_dir}")
 
         except Exception as e:
             logger.error(f"Could not save session data: {e}")

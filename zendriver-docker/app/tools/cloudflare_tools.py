@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class CloudflareBypassTool(Tool):
-    """Tool to detect and bypass Cloudflare or reCAPTCHA challenges"""
+    """Tool to detect and bypass Cloudflare challenges"""
     name = "cloudflare_bypass"
-    description = "Detect and solve Cloudflare or reCAPTCHA challenges on the current page. Use this if you encounter 'Checking your browser', 'Just a moment', Cloudflare messages, or reCAPTCHA checkboxes ('I'm not a robot')."
+    description = "Detect and solve Cloudflare challenges on the current page. Use this if you encounter 'Checking your browser', 'Just a moment', or Cloudflare protection messages."
     inputs = {
         "action": {
             "type": "string",
@@ -103,17 +103,9 @@ class CloudflareBypassTool(Tool):
                     if verify_response.status_code == 200:
                         verify_data = verify_response.json()
                         if not verify_data.get("has_challenge"):
-                            if challenge_type == "cloudflare":
-                                return "Successfully bypassed Cloudflare challenge! Page is now accessible."
-                            elif challenge_type == "recaptcha":
-                                return f"Successfully clicked reCAPTCHA checkbox! {message}"
-                            else:
-                                return "Challenge solved successfully! Page is now accessible."
+                            return "Successfully bypassed Cloudflare challenge! Page is now accessible."
                         else:
-                            if challenge_type == "recaptcha":
-                                return f"reCAPTCHA checkbox clicked: {message}"
-                            else:
-                                return "Challenge was processed but may still be active. Try again or wait longer."
+                            return "Challenge was processed but may still be active. Try again or wait longer."
 
                     return f"Challenge solving completed ({challenge_type}). Page should be accessible."
 

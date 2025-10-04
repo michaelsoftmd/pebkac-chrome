@@ -305,6 +305,7 @@ body::before {
     margin-right: 2rem;
     background: var(--darker-bg);
     border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
     gap: 1rem;
@@ -674,6 +675,7 @@ body::before {
     gap: 0.25rem;
     background: var(--darker-bg);
     border-bottom: 1px solid var(--border-color);
+    border-left: 1px solid var(--border-color);
     padding: 0.35rem 1rem;
 }
 
@@ -779,6 +781,23 @@ body::before {
     min-height: 0;
 }
 
+.chat-messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+    background: var(--darker-bg);
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+    background: var(--text-secondary);
+}
+
 .chat-prompt {
     color: var(--text-secondary);
     font-family: 'IBM Plex Mono', 'Consolas', monospace;
@@ -803,6 +822,49 @@ body::before {
 
 .message.assistant {
     color: #ffffff;
+}
+
+.message.json-output {
+    background: rgba(0, 212, 255, 0.03);
+    padding: 0.5rem;
+    border-left: 2px solid rgba(0, 212, 255, 0.3);
+    margin: 0.3rem 0;
+    color: #88ddff;
+}
+
+.message.markdown-output a {
+    color: var(--zenbot-orange);
+    text-decoration: underline;
+}
+
+.message.markdown-output p {
+    margin: 0;
+}
+
+.message.markdown-output ul,
+.message.markdown-output ol {
+    margin: 0.3rem 0;
+    padding-left: 1.5rem;
+}
+
+.message.markdown-output code {
+    color: #ffffff;
+}
+
+.message.markdown-output strong {
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.message.markdown-output h1,
+.message.markdown-output h2,
+.message.markdown-output h3,
+.message.markdown-output h4,
+.message.markdown-output h5,
+.message.markdown-output h6 {
+    color: #ffffff;
+    font-weight: 700;
+    margin: 0.3rem 0;
 }
 
 .chat-input-container {
