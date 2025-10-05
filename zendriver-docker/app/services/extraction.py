@@ -260,7 +260,7 @@ class UnifiedExtractionService:
         else:
             return 'very_high'
     
-    def _get_first_words(self, text: str, word_limit: int = 200) -> str:
+    def _get_first_words(self, text: str, word_limit: int = 350) -> str:
         """Get first N words without truncating mid-sentence"""
         if not text:
             return ""
@@ -309,10 +309,10 @@ class UnifiedExtractionService:
                 price_text += f" {data['currency']}"
             result += f"{price_text}\n"
 
-        # Content (100-250 words)
+        # Content (100-350 words)
         text = data.get('text', '')
         if text:
-            content = self._get_first_words(text, word_limit=200)
+            content = self._get_first_words(text, word_limit=350)
             result += f"\n{content}"
 
         # Links if available
@@ -353,7 +353,7 @@ class UnifiedExtractionService:
 
 ## Content
 
-{text[:5000]}{"..." if len(text) > 5000 else ""}
+{text[:7500]}{"..." if len(text) > 7500 else ""}
 
 ## Statistics
 - Word Count: {len(text.split())}
@@ -383,7 +383,7 @@ class UnifiedExtractionService:
 
 ## Content
 
-{text[:5000] if text else '(No content extracted)'}{"..." if text and len(text) > 5000 else ""}
+{text[:7500] if text else '(No content extracted)'}{"..." if text and len(text) > 7500 else ""}
 
 ## Statistics
 - Text Length: {text_length} characters

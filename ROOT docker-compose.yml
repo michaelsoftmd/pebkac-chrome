@@ -75,14 +75,15 @@ services:
       "--port", "8080",
       "-ngl", "${LLAMACPP_GPU_LAYERS:-18}",
       "-t", "${LLAMACPP_THREADS:-4}",
-      "-c", "${LLAMACPP_CONTEXT:-4096}",
-      "-b", "${LLAMACPP_BATCH:-1024}",
+      "-c", "${LLAMACPP_CONTEXT:-8192}",
+      "-b", "${LLAMACPP_BATCH:-2048}",
       "-ub", "${LLAMACPP_UBATCH:-512}",
       "--flash-attn", "auto",
       "--mlock",
       "-sm", "layer",
       "--jinja",
       "-np", "${LLAMACPP_PARALLEL:-1}",
+      "--ctx-shift",
       "--metrics"
     ]
     healthcheck:
@@ -91,13 +92,17 @@ services:
       timeout: 10s
       retries: 3
     restart: unless-stopped
-    profiles: ["llamacpp", "full"]
+    profiles: ["zendriver", "llamacpp", "full"]
 
   # Zendriver Browser Automation
   zendriver:
     build:
       context: ./zendriver-docker
     container_name: zendriver
+    depends_on:
+      - llama-cpp-server
+      - redis-cache
+      - duckdb-cache
     networks:
       - llm-network
     ports:

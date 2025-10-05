@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZENBOT - Chrome NonAutomation Platform</title>
+    <title>pebkac - Chrome NonAutomation Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=JetBrains+Mono:wght@300;400;500&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
@@ -12,9 +12,9 @@
     <div class="container">
         <!-- Fixed top header -->
         <div class="fixed-header">
-            <div class="zenbot-logo">
-                <div class="zenbot-title">ZENBOT</div>
-                <div class="zenbot-subtitle">Chrome NonAutomation Platform</div>
+            <div class="pebkac-logo">
+                <div class="pebkac-title">pebkac</div>
+                <div class="pebkac-subtitle">Chrome NonAutomation Platform</div>
             </div>
             <div class="status-indicator">
                 <span id="connection-status" class="status disconnected">Offline</span>
@@ -49,7 +49,7 @@
                     <div id="chat-tab" class="tab-content active">
                     <div class="chat-section">
                         <div class="chat-header">
-                            <h3>Zenbot Chat Interface</h3>
+                            <h3>pebkac Chat Interface</h3>
                             <div class="chat-controls">
                                 <button class="btn btn-secondary" onclick="clearChat()">Clear Chat</button>
                                 <span id="agent-status" class="agent-status">Ready</span>
@@ -65,7 +65,7 @@
                         <div class="chat-input-container">
                             <textarea id="chat-input"
                                       class="chat-input"
-                                      placeholder="Ask Zenbot to browse the web..."
+                                      placeholder="Ask pebkac to browse the web..."
                                       rows="3"></textarea>
                             <button id="send-btn" class="btn btn-primary" onclick="sendMessage()">
                                 Send
@@ -86,7 +86,7 @@
                         </div>
 
                         <div id="log-viewer" class="log-viewer">
-                            <div class="log-line info">ZENBOT Chrome NonAutomation Platform - Initializing...</div>
+                            <div class="log-line info">pebkac Chrome NonAutomation Platform - Initializing...</div>
                             <div class="log-line info">System components loading...</div>
                             <div class="log-line info">Ready for operation</div>
                             <div class="log-line warning">Connecting to log streams...</div>
@@ -150,7 +150,7 @@
 
         function toggleTheme() {
             // Simple theme toggle effect
-            const title = document.querySelector('.zenbot-title');
+            const title = document.querySelector('.pebkac-title');
             title.style.transform = 'rotate(-1deg) scale(1.02)';
             setTimeout(() => {
                 title.style.transform = 'rotate(-1deg) scale(1)';
@@ -240,12 +240,11 @@
             }
         }
 
-        let systemRunning = false;
-
         async function toggleSystem() {
             const button = document.getElementById('system-toggle');
+            const isRunning = button.textContent === 'Stop System';
 
-            if (!systemRunning) {
+            if (!isRunning) {
                 // Starting system
                 button.disabled = true;
                 button.textContent = 'Starting...';
@@ -287,11 +286,9 @@
 
                 // Always update button state
                 if (startupSuccess) {
-                    systemRunning = true;
                     button.textContent = 'Stop System';
                     button.className = 'btn btn-danger';
                 } else {
-                    systemRunning = false;
                     button.textContent = 'Boot System';
                     button.className = 'btn btn-boot';
                 }
@@ -325,7 +322,6 @@
 
                 // Always update button state
                 if (stopSuccess) {
-                    systemRunning = false;
                     button.textContent = 'Boot System';
                     button.className = 'btn btn-boot';
                 } else {
@@ -537,7 +533,7 @@
         // Load chat history from localStorage on page load
         function loadChatHistory() {
             try {
-                const saved = localStorage.getItem('zenbot_chat_history');
+                const saved = localStorage.getItem('pebkac_chat_history');
                 if (saved) {
                     conversationHistory = JSON.parse(saved);
 
@@ -560,7 +556,7 @@
         // Save chat history to localStorage
         function saveChatHistory() {
             try {
-                localStorage.setItem('zenbot_chat_history', JSON.stringify(conversationHistory));
+                localStorage.setItem('pebkac_chat_history', JSON.stringify(conversationHistory));
             } catch (e) {
                 console.error('Failed to save chat history:', e);
             }
@@ -760,7 +756,7 @@
 
             // Clear conversation history
             conversationHistory = [];
-            localStorage.removeItem('zenbot_chat_history');
+            localStorage.removeItem('pebkac_chat_history');
 
             // Reset chat display
             const messagesContainer = document.getElementById('chat-messages');

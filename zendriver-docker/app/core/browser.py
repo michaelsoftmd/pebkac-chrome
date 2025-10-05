@@ -76,7 +76,7 @@ class BrowserManager:
 
     def _create_secure_base_dir(self) -> Path:
         """Create a secure base directory that can't be escaped"""
-        base_dir = Path(tempfile.gettempdir()) / "zenbot_profiles"
+        base_dir = Path(tempfile.gettempdir()) / "pebkac_profiles"
         base_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         return base_dir.resolve()
 
@@ -187,7 +187,7 @@ class BrowserManager:
         # Kill old Chrome processes more selectively (only oldest ones)
         try:
             subprocess.run(
-                ["pkill", "-f", "-o", "chrome.*zenbot_profiles"],
+                ["pkill", "-f", "-o", "chrome.*pebkac_profiles"],
                 capture_output=True,
                 timeout=5
             )

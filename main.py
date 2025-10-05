@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI app
 app = FastAPI(
-    title="Zenbot-Chrome Remote Control",
+    title="pebkac - Chrome Remote Control",
     version="1.0.0",
     lifespan=lifespan
 )

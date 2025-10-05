@@ -1,7 +1,7 @@
 :root {
     --primary-cyan: #00d4ff;
     --primary-purple: #7c3aed;
-    --zenbot-orange: #ffc107;
+    --pebkac-orange: #ffc107;
     --accent-green: #00ff88;
     --accent-orange: #ff8800;
     --accent-red: #ff4455;
@@ -86,7 +86,7 @@ body::before {
     100% { left: 100%; }
 }
 
-.zenbot-logo {
+.pebkac-logo {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -94,11 +94,11 @@ body::before {
     margin-top: 0;
 }
 
-.zenbot-title {
+.pebkac-title {
     font-family: 'Orbitron', monospace;
     font-size: 2.6rem;
     font-weight: 900;
-    color: var(--zenbot-orange);
+    color: var(--pebkac-orange);
     letter-spacing: 4px;
     position: relative;
     text-transform: uppercase;
@@ -115,8 +115,8 @@ body::before {
     z-index: 10;
 }
 
-.zenbot-title::before {
-    content: 'ZENBOT';
+.pebkac-title::before {
+    content: 'pebkac';
     position: absolute;
     top: -2px;
     left: -2px;
@@ -125,8 +125,8 @@ body::before {
     opacity: 0.7;
 }
 
-.zenbot-title::after {
-    content: 'ZENBOT';
+.pebkac-title::after {
+    content: 'pebkac';
     position: absolute;
     top: 2px;
     left: 2px;
@@ -134,7 +134,7 @@ body::before {
     z-index: -2;
 }
 
-.zenbot-subtitle {
+.pebkac-subtitle {
     font-size: 0.875rem;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -392,7 +392,7 @@ body::before {
 
 .vnc-placeholder .icon {
     font-size: 3rem;
-    color: var(--zenbot-orange);
+    color: var(--pebkac-orange);
     margin-bottom: 0.5rem;
     font-family: 'Orbitron', monospace;
     font-weight: 400;
@@ -402,7 +402,7 @@ body::before {
     font-size: 1.25rem;
     font-family: 'Orbitron', monospace;
     font-weight: 600;
-    color: var(--zenbot-orange);
+    color: var(--pebkac-orange);
     margin-bottom: 0.5rem;
     text-transform: uppercase;
     letter-spacing: 1px;
@@ -416,7 +416,7 @@ body::before {
 }
 
 .vnc-placeholder p:first-of-type {
-    color: var(--zenbot-orange);
+    color: var(--pebkac-orange);
     font-size: 1rem;
     font-weight: 500;
 }
@@ -586,7 +586,7 @@ body::before {
         min-height: 50px;
     }
 
-    .zenbot-logo {
+    .pebkac-logo {
         align-items: center;
         margin-top: 0;
     }
@@ -595,7 +595,7 @@ body::before {
         margin-top: 8px;
     }
 
-    .zenbot-title {
+    .pebkac-title {
         font-size: 2.0rem;
         letter-spacing: 3px;
         transform: rotate(-3deg) skew(-4deg) scale(1.05);
@@ -702,7 +702,7 @@ body::before {
 }
 
 .main-tab.active {
-    color: var(--zenbot-orange);
+    color: var(--pebkac-orange);
     background: rgba(255, 193, 7, 0.08);
     border-color: rgba(255, 193, 7, 0.3);
 }
@@ -834,7 +834,7 @@ body::before {
 }
 
 .message.markdown-output a {
-    color: var(--zenbot-orange);
+    color: var(--pebkac-orange);
     text-decoration: underline;
 }
 
@@ -912,8 +912,8 @@ body::before {
 }
 
 .btn-primary {
-    background: var(--zenbot-orange);
-    border-color: var(--zenbot-orange);
+    background: var(--pebkac-orange);
+    border-color: var(--pebkac-orange);
     color: var(--darker-bg);
 }
 
