@@ -285,12 +285,12 @@ class UnifiedExtractionService:
         
         return partial_text  # Return as-is if no good break point
     
-    def _format_compact(self, data: Dict, url: str) -> str:
+    def _format_compact(self, data: Dict, url: str, links: list = None) -> str:
         """Compact formatting with essential metadata only"""
-        
+
         # Essential metadata
         result = f"URL: {url}\n"
-        
+
         if data.get('title'):
             result += f"Title: {data['title']}\n"
         if data.get('author'):
@@ -301,20 +301,30 @@ class UnifiedExtractionService:
             result += f"Site: {data['sitename']}\n"
         if data.get('description'):
             result += f"Description: {data['description']}\n"
-        
+
         # Price info if available
         if data.get('price'):
             price_text = f"Price: {data['price']}"
             if data.get('currency'):
                 price_text += f" {data['currency']}"
             result += f"{price_text}\n"
-        
+
         # Content (100-250 words)
         text = data.get('text', '')
         if text:
             content = self._get_first_words(text, word_limit=200)
             result += f"\n{content}"
-        
+
+        # Links if available
+        if links:
+            result += f"\n\nLinks found: {len(links)}\n"
+            for link in links[:10]:  # First 10 links
+                if isinstance(link, dict):
+                    link_text = link.get('text', '')[:50]
+                    link_href = link.get('href', '')
+                    if link_text and link_href:
+                        result += f"- {link_text}: {link_href}\n"
+
         return result
     
     def _format_for_openwebui(self, doc_dict: Dict, url: str) -> str:
@@ -696,23 +706,34 @@ class UnifiedExtractionService:
                 if results:
                     # Create text preview for formatted output
                     if extract_href and extract_text:
-                        # Mixed data with text and hrefs
-                        text_preview = '\n'.join([f"{item.get('text', '')}" for item in results[:5] if isinstance(item, dict)])
+                        # Mixed data with text and hrefs - show both
+                        lines = []
+                        for item in results[:10]:
+                            if isinstance(item, dict):
+                                text = item.get('text', '')[:60]
+                                href = item.get('href', '')
+                                if text and href:
+                                    lines.append(f"- {text}: {href}")
+                                elif href:
+                                    lines.append(f"- {href}")
+                                elif text:
+                                    lines.append(f"- {text}")
+                        text_preview = '\n'.join(lines)
                     elif extract_href:
                         # Only hrefs
-                        text_preview = '\n'.join([f"{item.get('href', '')}" for item in results[:5] if isinstance(item, dict)])
+                        text_preview = '\n'.join([f"{item.get('href', '')}" for item in results[:10] if isinstance(item, dict)])
                     elif isinstance(results[0] if results else None, dict):
                         # Text in dict format
-                        text_preview = '\n'.join([f"{item.get('text', '')}" for item in results[:5] if isinstance(item, dict)])
+                        text_preview = '\n'.join([f"{item.get('text', '')}" for item in results[:10] if isinstance(item, dict)])
                     else:
                         # Legacy string format
-                        text_preview = '\n'.join(results[:5])
-                    
+                        text_preview = '\n'.join(results[:10])
+
                     response['formatted_output'] = f"""URL: {current_url}
 Selector: {selector or xpath}
 Elements: {len(results)}
 
-{text_preview[:1000]}{"..." if len(text_preview) > 1000 else ""}"""
+{text_preview[:1200]}{"..." if len(text_preview) > 1200 else ""}"""
                         
             except Exception as e:
                 logger.error(f"Selector extraction failed: {e}")

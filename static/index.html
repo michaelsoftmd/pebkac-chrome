@@ -112,7 +112,10 @@
         let vncActive = false;
         let currentLogSource = 'zendriver';
         let eventSource = null;
-        let logBuffer = [];
+        let logBuffers = {
+            'zendriver': [],
+            'llama-cpp-server': []
+        };
         const MAX_LOG_LINES = 1000;
         let retryCount = 0;
         let retryTimeout = null;
@@ -375,21 +378,35 @@
 
         function switchLog(source) {
             if (source === currentLogSource) return;
-            
+
             document.querySelectorAll('.log-tab').forEach(tab => {
                 tab.classList.remove('active');
             });
-            
+
             event.target.classList.add('active');
-            
-            clearLogs();
-            addLogLine(`Switching to ${source} logs...`, 'info');
-            
+
+            // Close existing connection
             if (eventSource) {
                 eventSource.close();
             }
-            
+
+            // Switch to new source
             currentLogSource = source;
+
+            // Clear display and restore logs for this source
+            clearLogs();
+
+            // Restore buffered logs for this source
+            if (logBuffers[source] && logBuffers[source].length > 0) {
+                const logViewer = document.getElementById('log-viewer');
+                logBuffers[source].forEach(logHTML => {
+                    logViewer.innerHTML += logHTML;
+                });
+                logViewer.scrollTop = logViewer.scrollHeight;
+            } else {
+                addLogLine(`Connecting to ${source} logs...`, 'info');
+            }
+
             connectToLogs(source);
         }
 
@@ -469,10 +486,16 @@
                 line.textContent = message;
             }
 
-            logBuffer.push({ message, level, timestamp: new Date() });
+            // Store log in source-specific buffer
+            if (!logBuffers[currentLogSource]) {
+                logBuffers[currentLogSource] = [];
+            }
 
-            if (logBuffer.length > MAX_LOG_LINES) {
-                logBuffer.shift();
+            logBuffers[currentLogSource].push(line.outerHTML);
+
+            // Trim buffer if too large
+            if (logBuffers[currentLogSource].length > MAX_LOG_LINES) {
+                logBuffers[currentLogSource].shift();
                 if (viewer.firstChild) {
                     viewer.removeChild(viewer.firstChild);
                 }

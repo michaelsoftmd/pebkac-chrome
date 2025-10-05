@@ -20,7 +20,26 @@ logger = logging.getLogger(__name__)
 class CloudflareBypassTool(Tool):
     """Tool to detect and bypass Cloudflare challenges"""
     name = "cloudflare_bypass"
-    description = "Detect and solve Cloudflare challenges on the current page. Use this if you encounter 'Checking your browser', 'Just a moment', or Cloudflare protection messages."
+    description = """Detect and solve Cloudflare anti-bot challenges on the current page.
+
+WHEN TO USE:
+- Page shows "Checking your browser" message
+- "Just a moment..." loading screen
+- Cloudflare protection blocking access
+- 403/503 errors from Cloudflare
+
+ACTIONS:
+- auto (default): Detect and solve if challenge found
+- detect: Check for challenges without solving
+- solve: Attempt to bypass detected challenge
+
+TYPICAL WORKFLOW:
+1. Navigate to protected page
+2. Call cloudflare_bypass() with default 'auto' action
+3. Wait for bypass completion (up to 15 seconds)
+4. Continue with normal extraction/interaction
+
+Returns success status and challenge type solved."""
     inputs = {
         "action": {
             "type": "string",

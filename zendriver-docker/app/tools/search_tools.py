@@ -22,14 +22,28 @@ logger = logging.getLogger(__name__)
 
 class WebSearchTool(Tool):
     name = "web_search"
-    description = """Search the web using various search engines OR search within specific sites. Returns Python dict with results array.
-    Examples:
-    - 'laptops' -> searches DuckDuckGo for laptops
-    - 'search google for laptops' -> searches Google for laptops
-    - 'laptops on amazon' -> searches within Amazon for laptops
-    - Returns: Either JSON or Python dict with 'query', 'engine', and 'results' keys
-    - Access results like: urls = [r['url'] for r in search_result['results']]
-    - For navigation to specific sites, use navigate_browser tool instead."""
+    description = """Search the web using various search engines or search within specific sites. Returns Python dict with results array.
+
+ENGINES SUPPORTED:
+- duckduckgo (default): General web search
+- google: Google search
+- amazon: Product search on Amazon
+- youtube: Video search
+- wikipedia: Encyclopedia search
+- reddit: Community discussions
+- github: Code repositories
+- bing: Microsoft search
+
+USAGE EXAMPLES:
+- Simple: web_search("wireless headphones") → DuckDuckGo
+- Explicit: web_search("laptops", engine="amazon") → Amazon product search
+- Natural: web_search("search google for python tutorials") → Auto-detects Google
+- Site-specific: web_search("react hooks on github") → Auto-detects GitHub
+
+RETURNS: Dict with 'query', 'engine', 'results' (array of {title, url, domain})
+ACCESS: urls = [r['url'] for r in search_result['results']]
+
+NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser instead"""
     inputs = {
         "query": {"type": "string", "description": "Search query"},
         "engine": {
@@ -237,10 +251,26 @@ class WebSearchTool(Tool):
 
                         # Filter for actual result links
                         search_engine_domains = ["duckduckgo", "duck.co", "google.com", "bing.com"]
+
+                        # Skip navigation, tracking, and non-product links
+                        skip_patterns = [
+                            '/gp/help/',           # Help pages
+                            '/gp/subs/',           # Subscriptions
+                            '/hz5/',               # Account management
+                            '/hz/mycd/',           # Content management
+                            'aax-fe.amazon',       # Ad redirects
+                            '/x/c/',               # Tracking redirects
+                            'ref_=nav_',           # Navigation refs
+                            'ref_=footer_',        # Footer refs
+                            '/auto-deliveries',    # Subscribe & Save
+                            '/gp/browse.html',     # Browse nodes (not products)
+                        ]
+
                         if (href and text and
                             href.startswith("https://") and
                             len(text) > 20 and len(text) < 300 and
-                            not any(domain in href.lower() for domain in search_engine_domains)):
+                            not any(domain in href.lower() for domain in search_engine_domains) and
+                            not any(pattern in href for pattern in skip_patterns)):
 
                             search_results.append({
                                 "title": text[:150],
@@ -294,7 +324,24 @@ class SearchHistoryTool(Tool):
 
 class VisitWebpageTool(Tool):
     name = "visit_webpage"
-    description = "Visit a webpage and return its content"
+    description = """Navigate to a URL and automatically extract its content. Combines navigation + extraction in one step.
+
+FEATURES:
+- Navigates to URL
+- Waits for page load
+- Extracts main content using Trafilatura (strips nav/ads)
+- Returns page title and content (up to 2000 chars)
+
+USE CASES:
+- Quick content preview from search results
+- Extract article/documentation content
+- Get page summary without manual extraction
+
+OPTIONAL:
+- wait_for: CSS selector to wait for before extracting (for dynamic content)
+- extract_text: Set to False to just navigate without extraction
+
+ALTERNATIVE: Use navigate_browser + extract_content separately for more control"""
     inputs = {
         "url": {"type": "string", "description": "URL to visit"},
         "wait_for": {"type": "string", "description": "CSS selector to wait for", "nullable": True, "default": None},

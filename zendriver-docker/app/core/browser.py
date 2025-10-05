@@ -214,7 +214,6 @@ class BrowserManager:
             "--disable-gpu-sandbox",
             "--disable-features=site-per-process",
             "--password-store=basic",  # Store passwords in profile
-            "--restore-last-session",  # Restore previous session
             "--disable-features=PrivacySandboxSettings4",  # Prevent cookie clearing
             "--disable-features=ClearDataOnExit",  # Prevent data clearing
         ])

@@ -19,7 +19,18 @@ logger = logging.getLogger(__name__)
 
 class ScreenshotTool(Tool):
     name = "take_screenshot"
-    description = "Take a screenshot of the current page or a specific element"
+    description = """Take a screenshot of the current page or specific element. Saves to /tmp/exports/.
+
+USE CASES:
+- Capture entire page: take_screenshot(full_page=True)
+- Capture specific element: take_screenshot(selector=".product-details")
+- Debug visual issues: Screenshot to verify element visibility
+- Archive visual state: Save page appearance for later reference
+
+FORMATS: PNG (default)
+SAVES TO: /tmp/exports/ with timestamp filename
+
+Returns path to saved screenshot file."""
     inputs = {
         "selector": {"type": "string", "description": "CSS selector of element to screenshot (optional)", "nullable": True},
         "full_page": {"type": "boolean", "description": "Capture full page", "default": False, "nullable": True}
@@ -76,7 +87,25 @@ class GetElementPositionTool(Tool):
 
 class InterceptNetworkTool(Tool):
     name = "intercept_network"
-    description = "Intercept and modify network requests"
+    description = """Intercept network requests matching a URL pattern. Currently limited to Document resource type.
+
+ACTIONS:
+- log: Monitor requests without blocking (default)
+- block: Prevent requests from loading
+- modify: Intercept and modify response (experimental)
+
+URL PATTERNS:
+- Wildcards: '*.jpg', '*api*', '*analytics*'
+- Specific: 'https://example.com/api/*'
+
+LIMITATIONS:
+- Only intercepts Document resources (not XHR/Fetch)
+- Single-use: Catches one request then stops
+- Results not returned to agent (runs in background)
+
+NOTE: For capturing dynamic AJAX data, see network-monitoring-proposal.md
+
+Returns confirmation that interception started."""
     inputs = {
         "url_pattern": {"type": "string", "description": "URL pattern to intercept"},
         "action": {

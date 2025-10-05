@@ -19,7 +19,22 @@ logger = logging.getLogger(__name__)
 
 class ExtractContentTool(Tool):
     name = "extract_content"
-    description = "Extract content from the current page"
+    description = """Extract content from the current page. Returns text and links from matched elements.
+
+SELECTOR TIPS:
+- Leave empty for automatic intelligent extraction (uses Trafilatura)
+- Product listings: 'div[data-component-type="s-search-result"]', 'article', '.product-item', '[class*="product"]'
+- Prices: 'span.price', '.price-value', '[class*="price"]', '[data-price]'
+- Links: 'a[href*="/dp/"]' (Amazon products), 'a.product-link', 'h2 a', 'h3 a'
+- Titles/headings: 'h1', 'h2', 'h3', '[data-cy="title"]', '.product-title'
+- Main content: 'main', 'article', '[role="main"]', '#content'
+- Use attribute selectors for precision: '[data-*]', '[aria-label*=""]', '[href*="keyword"]'
+- If results look wrong (nav/footer links), use more specific selectors or data attributes
+
+WHEN TO USE:
+- Extract main page content without selector
+- Extract specific elements with CSS selector
+- Get links from a page (automatically includes hrefs)"""
     inputs = {
         "selector": {
             "type": "string",
@@ -43,7 +58,8 @@ class ExtractContentTool(Tool):
                 json={
                     "selector": selector,
                     "extract_text": True,
-                    "extract_all": False
+                    "extract_all": False,
+                    "extract_href": True
                 }
             )
 
@@ -82,7 +98,15 @@ class ExtractContentTool(Tool):
 
 class ParallelExtractionTool(Tool):
     name = "extract_multiple"
-    description = "Extract content from multiple CSS selectors in parallel for faster data gathering"
+    description = """Extract content from multiple CSS selectors in parallel for faster data gathering.
+
+USE CASES:
+- Extract product title + price + rating simultaneously: ['h2.product-title', 'span.price', 'div.rating']
+- Get multiple page sections: ['main article', 'aside', 'footer']
+- Extract different link types: ['a[href*="/product/"]', 'a[href*="/category/"]']
+- Faster than calling extract_content multiple times sequentially
+
+Returns aggregated results with cache statistics."""
     inputs = {
         "selectors": {"type": "array", "description": "List of CSS selectors to extract from simultaneously"}
     }
@@ -131,7 +155,21 @@ class ParallelExtractionTool(Tool):
 
 class GarboPageMarkdownTool(Tool):
     name = "garbo_page_markdown"
-    description = "Garbo the current browser page content as a markdown file"
+    description = """Export the current page content as a markdown file for long-term storage.
+
+FEATURES:
+- Uses Trafilatura for intelligent content extraction
+- Saves to /tmp/exports/ with timestamp and page title
+- Includes metadata: URL, title, author, date, description
+- Strips navigation, ads, and boilerplate content
+- Preserves main article/page content
+
+USE WHEN:
+- Saving article/documentation for later reference
+- Archiving research content
+- Creating offline copies of important pages
+
+Returns filename and file size, not the content itself."""
     inputs = {
         "include_metadata": {
             "type": "boolean",

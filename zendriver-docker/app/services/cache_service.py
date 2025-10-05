@@ -1,6 +1,7 @@
 # app/services/cache_service.py
 import hashlib
 import json
+import pickle
 import time
 from typing import Optional, Dict, List, Any, Tuple
 from datetime import datetime, timedelta
@@ -80,22 +81,11 @@ class ExtractorCacheService:
                             key_str = key_str.decode('utf-8')
                         selector_hash = key_str.split(':')[-1]
 
-                        # Handle both pickle and int formats
+                        # Unpickle count value
                         if count:
-                            try:
-                                # Try unpickling first (new format)
-                                import pickle
-                                count = pickle.loads(count)
-                            except:
-                                try:
-                                    # Fall back to int (old format)
-                                    count = int(count)
-                                except:
-                                    count = 0
+                            selectors[selector_hash] = pickle.loads(count)
                         else:
-                            count = 0
-
-                        selectors[selector_hash] = count
+                            selectors[selector_hash] = 0
                     
                     if cursor == 0:
                         break
@@ -133,14 +123,19 @@ class ExtractorCacheService:
                     for key in keys:
                         # Get the count for this selector
                         count = await self.cache.redis_client.get(key)
-                        
+
                         # Extract selector hash from key
                         # Key format: "selector:domain:fails:hash"
                         key_str = str(key) if hasattr(key, 'decode') else key
                         if hasattr(key_str, 'decode'):
                             key_str = key_str.decode('utf-8')
                         selector_hash = key_str.split(':')[-1]
-                        selectors[selector_hash] = int(count) if count else 0
+
+                        # Unpickle count value
+                        if count:
+                            selectors[selector_hash] = pickle.loads(count)
+                        else:
+                            selectors[selector_hash] = 0
                     
                     if cursor == 0:
                         break

@@ -109,9 +109,9 @@ class CacheManager:
             await self.memory_cache.set(key, None, 0)
 
     async def _periodic_cleanup(self):
-        """Clean up expired entries every 5 minutes with proper error handling"""
+        """Clean up expired entries every 30 minutes with proper error handling"""
         while True:
-            await asyncio.sleep(300)
+            await asyncio.sleep(1800)
             try:
                 await self.memory_cache.clear_expired()
                 stats = self.memory_cache.get_stats()

@@ -19,7 +19,19 @@ logger = logging.getLogger(__name__)
 
 class NavigateBrowserTool(Tool):
     name = "navigate_browser"
-    description = "Navigate to a URL using the browser"
+    description = """Navigate the browser to a specific URL. Use this for direct navigation to known URLs.
+
+USE CASES:
+- Go to specific websites: 'https://example.com', 'duckduckgo.com'
+- Navigate to URLs from search results
+- Visit product pages, articles, documentation
+- Automatically adds 'https://' if missing
+
+NOT FOR SEARCHING:
+- Don't use for queries like 'search for X' - use web_search tool instead
+- Don't use for 'find me information about Y' - use web_search first
+
+Returns confirmation of successful navigation."""
     inputs = {
         "url": {"type": "string", "description": "URL to navigate to"},
         "force_refresh": {
@@ -95,7 +107,19 @@ class GetCurrentURLTool(Tool):
 
 class ClickElementTool(Tool):
     name = "click_element"
-    description = "Click an element on the page"
+    description = """Click an element on the page using CSS selector.
+
+SELECTOR TIPS:
+- Buttons: 'button[type="submit"]', '.btn-primary', '[aria-label="Add to cart"]'
+- Links: 'a[href*="/product/"]', 'nav a'
+- Specific elements: '#submit-button', '.cookie-accept', '[data-testid="login"]'
+- Form controls: 'input[type="checkbox"]', 'select[name="country"]'
+- Use data attributes when available: '[data-action="buy"]', '[data-cy="submit"]'
+
+TIPS:
+- If clicking doesn't work, element might be loading dynamically
+- Wait a moment after page load before clicking dynamic elements
+- Use specific selectors to avoid clicking wrong element"""
     inputs = {
         "selector": {
             "type": "string",
@@ -132,7 +156,19 @@ class ClickElementTool(Tool):
 
 class TypeTextTool(Tool):
     name = "type_text"
-    description = "Type text into an input field"
+    description = """Type text into an input field. Automatically clears existing text before typing.
+
+SELECTOR TIPS FOR INPUT FIELDS:
+- Search boxes: 'input[name="q"]', 'input#search', 'input[type="search"]', 'textarea[name="q"]'
+- Login forms: 'input[name="username"]', 'input[type="email"]', 'input#password'
+- Text inputs: 'input[placeholder*="Enter"]', 'textarea[name="message"]'
+- Specific fields: 'input[data-testid="search-input"]', '#email-field'
+- Amazon search: 'input#twotabsearchtextbox'
+
+TIPS:
+- Leave selector empty to type into currently focused element
+- Clears existing text by default before typing
+- Use keyboard_navigate tool to press Enter after typing"""
     inputs = {
         "text": {"type": "string", "description": "Text to type"},
         "selector": {
@@ -173,9 +209,24 @@ class TypeTextTool(Tool):
 
 
 class KeyboardNavigationTool(Tool):
-    """A helper for all TYPETEXT and WEBSEARCH tools. Press Enter, Tab, Escape, Arrow Keys"""
+    """Helper for keyboard navigation. Press Enter, Tab, Escape, Arrow Keys"""
     name = "keyboard_navigate"
-    description = "Press keys like Tab, Escape, Arrow keys, etc."
+    description = """Press keyboard keys for navigation and form interaction.
+
+AVAILABLE KEYS:
+- Enter: Submit forms, confirm actions
+- Tab: Navigate between fields, move focus
+- Escape: Close dialogs, cancel actions
+- ArrowUp/Down/Left/Right: Navigate menus, scroll
+- PageUp/PageDown: Scroll page
+- Home/End: Jump to top/bottom
+- Backspace/Delete: Remove text
+- Space: Activate buttons, scroll
+
+COMMON WORKFLOWS:
+- After type_text: Press 'Enter' to submit
+- Navigate forms: Use 'Tab' to move between fields
+- Close popups: Use 'Escape'"""
     inputs = {
         "key": {
             "type": "string",
