@@ -383,6 +383,34 @@ async def copy_tmp_to_exports():
             "error": str(e)
         }
 
+@app.get("/api/control/status")
+async def get_system_status():
+    """Check if containers are running"""
+    try:
+        # Check for running containers
+        proc = await asyncio.create_subprocess_exec(
+            'podman', 'ps', '--format', 'json', '--filter', 'name=zendriver',
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await proc.communicate()
+
+        containers = json.loads(stdout.decode()) if stdout.strip() else []
+        is_running = len(containers) > 0
+
+        return {
+            "status": "success",
+            "running": is_running,
+            "containers": len(containers)
+        }
+    except Exception as e:
+        logger.error(f"Error checking status: {e}")
+        return {
+            "status": "error",
+            "running": False,
+            "error": str(e)
+        }
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""

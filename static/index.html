@@ -792,9 +792,28 @@
         }
 
         // Handle Enter key in chat input and load chat history
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch('/api/control/status');
+                const result = await response.json();
+
+                const button = document.getElementById('system-toggle');
+                if (result.running) {
+                    button.textContent = 'Stop System';
+                    button.className = 'btn btn-danger';
+                } else {
+                    button.textContent = 'Boot System';
+                    button.className = 'btn btn-boot';
+                }
+            } catch (error) {
+                console.error('Failed to check system status:', error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             setInitialPrompt();
             loadChatHistory();
+            checkSystemStatus(); // Check status on page load
 
             const input = document.getElementById('chat-input');
             if (input) {
