@@ -112,7 +112,7 @@ I am of the opinion that pebkac demonstrates how mainstream approaches to LLMs a
 - **AMD or NVIDIA GPU** for llama.cpp acceleration
 
 ### **Initial Setup**
-1. Clone this repository into your project directory
+1. Clone this repository into your podman directory
 2. Rename the ROOT files to `.env` and `docker-compose.yml`
 3. Configure `docker-compose.yml`:
    - Set `group_add` entries to your actual render group GID (find with `getent group render`)
