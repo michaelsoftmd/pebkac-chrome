@@ -122,10 +122,7 @@ I am of the opinion that pebkac demonstrates how mainstream approaches to LLMs a
    - Set `LLAMACPP_MODEL` to your GGUF model filename (must exist in `/podman/models/gguf/`) unless setting yourself. This is the trickiest part that I can't help with.
    - Set `LLAMACPP_GPU_LAYERS` based on your VRAM
    - Set `HF_TOKEN` if downloading models from HuggingFace
-5. Start the stack:
-   ```bash
-   podman compose --profile full up --build
-   ```
+5. Open the pebkac Yaml Runner.
 6. Access the Control Panel at http://localhost:8888
    - Chat interface for interacting with the LLM
    - Live browser view via noVNC (1280x720)
