@@ -53,7 +53,7 @@ class AgentManager:
         self.last_query: Optional[str] = None
 
         # Stream configuration
-        self.stream_chunk_size = int(os.getenv("AGENT_STREAM_CHUNK_SIZE", "500"))
+        self.stream_chunk_size = int(os.getenv("AGENT_STREAM_CHUNK_SIZE", "75"))
 
         # Create OpenAI client pointing to llama.cpp
         self.openai_client = OpenAI(

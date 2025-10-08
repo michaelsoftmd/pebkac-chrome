@@ -36,16 +36,22 @@ ENGINES SUPPORTED:
 
 USAGE EXAMPLES:
 - Simple: web_search("wireless headphones") → DuckDuckGo, 10 results
-- More results: web_search("laptops", max_results=30) → 30 results
+- More results: web_search("laptops", max_results=30) → 30 results (from first page)
 - Explicit: web_search("laptops", engine="amazon") → Amazon product search
 - Natural: web_search("search google for python tutorials") → Auto-detects Google
 - Site-specific: web_search("react hooks on github") → Auto-detects GitHub
 
+PAGINATION (getting more results):
+- First search: web_search("query") → Returns first page
+- Load more: web_search("query", load_more=True) → Clicks More Results/Next, returns additional results
+- Chain calls: Keep calling with load_more=True until you have enough results or get "No more results"
+- IMPORTANT: load_more only works if you're still on the results page from previous search
+
 RESULT LIMITS:
-- Default: 10 results (keeps context low)
+- Default: 10 results per page (keeps context low)
 - Use max_results=20-30 for broad searches or when you need more options
 - Use max_results=40-50 for comprehensive product comparisons
-- Max limit: 50 results per search
+- Max limit: 50 results per call (use load_more for additional pages)
 
 RETURNS: Dict with 'query', 'engine', 'results' (array of {title, url, domain})
 ACCESS: urls = [r['url'] for r in search_result['results']]
@@ -59,6 +65,12 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
             "default": "duckduckgo",
             "nullable": True
         },
+        "load_more": {
+            "type": "boolean",
+            "description": "Click More Results/Next button to load next page. Only use after initial search on same query.",
+            "default": False,
+            "nullable": True
+        },
         "site": {
             "type": "string",
             "description": "Site to search (optional, redundant with engine)",
@@ -67,7 +79,7 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
         },
         "max_results": {
             "type": "integer",
-            "description": "Number of results to return (default: 10, max: 50). Use higher values for broad searches.",
+            "description": "Number of results to return per page (default: 10, max: 50). Use load_more for additional pages.",
             "default": None,
             "nullable": True
         }
@@ -85,43 +97,43 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
         self.search_configs = {
             "duckduckgo": {
                 "url": "https://duckduckgo.com",
-                "input_selector": "input[name='q']",
-                "result_selectors": ["a[href]", "h2 a", ".result__a"]
+                "input_selector": "input[type='text'], input[type='search']",
+                "more_results_selector": "button:has-text('More'), a:has-text('More')"
             },
             "google": {
                 "url": "https://www.google.com",
-                "input_selector": "input[name='q'], textarea[name='q']",
-                "result_selectors": ["h3", "a[jsname]", ".g a"]
+                "input_selector": "input[type='text'], textarea[name='q']",
+                "more_results_selector": "a:has-text('Next'), a[aria-label*='Next']"
             },
             "bing": {
                 "url": "https://www.bing.com",
-                "input_selector": "input[name='q']",
-                "result_selectors": ["h2 a", ".b_algo h2 a", "cite"]
+                "input_selector": "input[type='text'], input[type='search']",
+                "more_results_selector": "a:has-text('Next'), a.sb_pagN"
             },
             "amazon": {
                 "url": "https://www.amazon.com",
-                "input_selector": "input#twotabsearchtextbox",
-                "result_selectors": ["div[data-component-type='s-search-result']", "h2 a"]
+                "input_selector": "input[type='text']",
+                "more_results_selector": "a:has-text('Next'), a.s-pagination-next"
             },
             "youtube": {
                 "url": "https://www.youtube.com",
-                "input_selector": "input#search",
-                "result_selectors": ["ytd-video-renderer", "a#video-title"]
+                "input_selector": "input[type='text'], input#search",
+                "more_results_selector": None  # YouTube uses infinite scroll
             },
             "wikipedia": {
                 "url": "https://en.wikipedia.org",
-                "input_selector": "input[name='search']",
-                "result_selectors": [".mw-search-result-heading", ".searchmatch"]
+                "input_selector": "input[type='text'], input[type='search']",
+                "more_results_selector": "a:has-text('next'), a.mw-nextlink"
             },
             "reddit": {
                 "url": "https://www.reddit.com",
-                "input_selector": "input[type='search']",
-                "result_selectors": ["div[data-testid='post-container']", "a[data-click-id='body']"]
+                "input_selector": "input[type='search'], input[type='text']",
+                "more_results_selector": None  # Reddit uses infinite scroll
             },
             "github": {
                 "url": "https://github.com",
-                "input_selector": "input[type='text'][placeholder*='Search']",
-                "result_selectors": [".repo-list-item", "a.Link--primary"]
+                "input_selector": "input[type='text']",
+                "more_results_selector": "a:has-text('Next'), a.next_page"
             }
         }
 
@@ -174,7 +186,7 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
         # No pattern matched - use full query on default engine
         return detected_site, query
 
-    def forward(self, query: str, engine: str = "duckduckgo", site: str = None, max_results: int = None) -> str:
+    def forward(self, query: str, engine: str = "duckduckgo", load_more: bool = False, site: str = None, max_results: int = None) -> str:
         """Execute web search"""
         try:
             # Apply max_results limit
@@ -199,57 +211,79 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
             # Continue with search...
             config = self.search_configs.get(detected_site, self.search_configs["duckduckgo"])
 
-            # Check if we're already on the search engine to avoid unnecessary navigation
-            current_url_response = self.client.get(f"{self.api_url}/get_current_url")
-            should_navigate = True
+            # PAGINATION MODE: If load_more=True, skip navigation and just click More Results
+            if load_more:
+                more_selector = config.get("more_results_selector")
 
-            if current_url_response.status_code == 200:
-                current_url = current_url_response.json().get("url", "")
-                if config["url"] in current_url:
-                    # We're already on this search engine, navigate to homepage first to reset state
-                    logger.debug(f"Already on {detected_site}, navigating to homepage to reset state")
+                if more_selector is None:
+                    return f"Error: {detected_site} does not support pagination (uses infinite scroll)"
 
-            # Navigate to the search site (always navigate to ensure clean state)
-            nav_response = self.client.post(
-                f"{self.api_url}/navigate",
-                json={"url": config["url"]}
-            )
+                # Click the More Results / Next button
+                click_response = self.client.post(
+                    f"{self.api_url}/interaction/click",
+                    json={"selector": more_selector}
+                )
 
-            if nav_response.status_code != 200:
-                return f"Navigation failed: {nav_response.status_code}"
+                if click_response.status_code != 200:
+                    return f"Error: Could not find More Results/Next button. Make sure you're on a results page from a previous search."
 
-            time.sleep(2)
+                # Wait for new results to load
+                time.sleep(3)
 
-            # If no search query, just stay on homepage
-            if not search_terms:
-                return f"Navigated to {detected_site} homepage"
+                # Skip to extraction (reuse extraction logic below)
+            else:
+                # NORMAL SEARCH MODE: Navigate and perform search
+                # Check if we're already on the search engine to avoid unnecessary navigation
+                current_url_response = self.client.get(f"{self.api_url}/get_current_url")
+                should_navigate = True
 
-            # Type search query
-            type_response = self.client.post(
-                f"{self.api_url}/interaction/type",
-                json={
-                    "text": search_terms,
-                    "selector": config["input_selector"],
-                    "clear_first": True
-                }
-            )
+                if current_url_response.status_code == 200:
+                    current_url = current_url_response.json().get("url", "")
+                    if config["url"] in current_url:
+                        # We're already on this search engine, navigate to homepage first to reset state
+                        logger.debug(f"Already on {detected_site}, navigating to homepage to reset state")
 
-            if type_response.status_code != 200:
-                return f"Failed to type query: {type_response.status_code}"
+                # Navigate to the search site (always navigate to ensure clean state)
+                nav_response = self.client.post(
+                    f"{self.api_url}/navigate",
+                    json={"url": config["url"]}
+                )
 
-            time.sleep(0.3)
+                if nav_response.status_code != 200:
+                    return f"Navigation failed: {nav_response.status_code}"
 
-            # Press Enter
-            enter_response = self.client.post(
-                f"{self.api_url}/interaction/keyboard",
-                json={"key": "Enter"}
-            )
+                time.sleep(2)
 
-            if enter_response.status_code != 200:
-                return f"Failed to press Enter: {enter_response.status_code}"
+                # If no search query, just stay on homepage
+                if not search_terms:
+                    return f"Navigated to {detected_site} homepage"
 
-            # Wait for results to load
-            time.sleep(3)
+                # Type search query
+                type_response = self.client.post(
+                    f"{self.api_url}/interaction/type",
+                    json={
+                        "text": search_terms,
+                        "selector": config["input_selector"],
+                        "clear_first": True
+                    }
+                )
+
+                if type_response.status_code != 200:
+                    return f"Failed to type query: {type_response.status_code}"
+
+                time.sleep(0.3)
+
+                # Press Enter
+                enter_response = self.client.post(
+                    f"{self.api_url}/interaction/keyboard",
+                    json={"key": "Enter"}
+                )
+
+                if enter_response.status_code != 200:
+                    return f"Failed to press Enter: {enter_response.status_code}"
+
+                # Wait for results to load
+                time.sleep(3)
 
             # Extract results
             extract_response = self.client.post(
