@@ -1210,6 +1210,33 @@ async def agent_info():
         logger.error(f"Failed to get agent info: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/agent/last-result")
+async def get_last_result():
+    """
+    Get the last completed agent result if available
+
+    Useful for reconnecting after page refresh or disconnect
+    Returns result only if it's less than 5 minutes old
+    """
+    try:
+        agent_manager = get_agent_manager()
+        result = agent_manager.get_last_result(max_age_seconds=300)
+
+        if result:
+            return {
+                "status": "success",
+                "has_result": True,
+                **result
+            }
+        else:
+            return {
+                "status": "success",
+                "has_result": False
+            }
+    except Exception as e:
+        logger.error(f"Failed to get last result: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ===========================
 # Run the application

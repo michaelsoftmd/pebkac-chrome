@@ -6,6 +6,7 @@ import os
 import logging
 import asyncio
 import json
+import time
 from typing import Dict, Optional, AsyncGenerator, Any, List
 from smolagents import OpenAIServerModel
 from openai import OpenAI
@@ -45,6 +46,14 @@ class AgentManager:
 
         # Track active tasks for cancellation
         self.active_tasks: Dict[str, asyncio.Task] = {}
+
+        # Store last completed result for reconnection (single-user system)
+        self.last_result: Optional[str] = None
+        self.last_result_time: Optional[float] = None
+        self.last_query: Optional[str] = None
+
+        # Stream configuration
+        self.stream_chunk_size = int(os.getenv("AGENT_STREAM_CHUNK_SIZE", "500"))
 
         # Create OpenAI client pointing to llama.cpp
         self.openai_client = OpenAI(
@@ -176,9 +185,13 @@ class AgentManager:
             elif not isinstance(formatted_result, str):
                 formatted_result = str(formatted_result)
 
-            chunk_size = 100
-            for i in range(0, len(formatted_result), chunk_size):
-                chunk = formatted_result[i:i+chunk_size]
+            # Store result for potential reconnection
+            self.last_result = formatted_result
+            self.last_result_time = time.time()
+            self.last_query = query
+
+            for i in range(0, len(formatted_result), self.stream_chunk_size):
+                chunk = formatted_result[i:i+self.stream_chunk_size]
                 yield {"type": "content", "data": chunk}
                 await asyncio.sleep(0.02)
 
@@ -186,10 +199,10 @@ class AgentManager:
             logger.info("Agent completed successfully")
 
         except asyncio.CancelledError:
-            logger.info(f"Agent streaming cancelled for request: {request_id}")
-            if task and not task.done():
-                task.cancel()
-            yield {"type": "error", "data": "Request cancelled"}
+            logger.info(f"Client disconnected for request: {request_id}, task will continue in background")
+            # Don't cancel task - let it complete in background
+            # Task will store result in self.last_result when done
+            return  # Stop yielding, but task continues
 
         except Exception as e:
             logger.error(f"AGENT_MANAGER: Exception in run_agent_streaming: {e}", exc_info=True)
@@ -234,6 +247,30 @@ class AgentManager:
                 logger.info(f"Cancelled agent task: {request_id}")
                 return True
         return False
+
+    def get_last_result(self, max_age_seconds: int = 300) -> Optional[Dict[str, Any]]:
+        """
+        Get the last completed agent result if it's recent enough
+
+        Args:
+            max_age_seconds: Maximum age of result in seconds (default 5 minutes)
+
+        Returns:
+            Dict with result data or None if no recent result
+        """
+        if not self.last_result or not self.last_result_time:
+            return None
+
+        age = time.time() - self.last_result_time
+        if age > max_age_seconds:
+            return None
+
+        return {
+            "result": self.last_result,
+            "query": self.last_query,
+            "timestamp": self.last_result_time,
+            "age_seconds": int(age)
+        }
 
     def get_tool_info(self) -> Dict[str, Any]:
         """Get information about available tools"""

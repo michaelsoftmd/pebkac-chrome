@@ -810,10 +810,30 @@
             }
         }
 
+        async function checkForRecentResult() {
+            try {
+                const response = await fetch('http://localhost:8090/api/agent/last-result');
+                const data = await response.json();
+
+                if (data.has_result && data.result) {
+                    // Show original query
+                    if (data.query) {
+                        addMessage('user', data.query, false);
+                    }
+
+                    // Show result
+                    addMessage('assistant', data.result, true);
+                }
+            } catch (error) {
+                console.error('Failed to check for recent result:', error);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             setInitialPrompt();
             loadChatHistory();
             checkSystemStatus(); // Check status on page load
+            checkForRecentResult(); // Check for recent completed results
 
             const input = document.getElementById('chat-input');
             if (input) {

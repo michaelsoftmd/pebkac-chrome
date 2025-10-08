@@ -35,10 +35,17 @@ ENGINES SUPPORTED:
 - bing: Microsoft search
 
 USAGE EXAMPLES:
-- Simple: web_search("wireless headphones") → DuckDuckGo
+- Simple: web_search("wireless headphones") → DuckDuckGo, 10 results
+- More results: web_search("laptops", max_results=30) → 30 results
 - Explicit: web_search("laptops", engine="amazon") → Amazon product search
 - Natural: web_search("search google for python tutorials") → Auto-detects Google
 - Site-specific: web_search("react hooks on github") → Auto-detects GitHub
+
+RESULT LIMITS:
+- Default: 10 results (keeps context low)
+- Use max_results=20-30 for broad searches or when you need more options
+- Use max_results=40-50 for comprehensive product comparisons
+- Max limit: 50 results per search
 
 RETURNS: Dict with 'query', 'engine', 'results' (array of {title, url, domain})
 ACCESS: urls = [r['url'] for r in search_result['results']]
@@ -57,6 +64,12 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
             "description": "Site to search (optional, redundant with engine)",
             "default": None,
             "nullable": True
+        },
+        "max_results": {
+            "type": "integer",
+            "description": "Number of results to return (default: 10, max: 50). Use higher values for broad searches.",
+            "default": None,
+            "nullable": True
         }
     }
     output_type = "string"  # JSON string containing search results
@@ -65,6 +78,10 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
         super().__init__()
         self.api_url = api_url
         self.client = httpx.Client(timeout=TIMEOUTS.http_extraction)
+
+        # Load search configuration from environment
+        self.max_results_default = int(os.getenv("SEARCH_MAX_RESULTS_DEFAULT", "10"))
+        self.max_results_limit = int(os.getenv("SEARCH_MAX_RESULTS_LIMIT", "50"))
         self.search_configs = {
             "duckduckgo": {
                 "url": "https://duckduckgo.com",
@@ -157,9 +174,15 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
         # No pattern matched - use full query on default engine
         return detected_site, query
 
-    def forward(self, query: str, engine: str = "duckduckgo", site: str = None) -> str:
+    def forward(self, query: str, engine: str = "duckduckgo", site: str = None, max_results: int = None) -> str:
         """Execute web search"""
         try:
+            # Apply max_results limit
+            if max_results is None:
+                max_results = self.max_results_default
+            else:
+                max_results = min(max_results, self.max_results_limit)
+
             # Use engine parameter if provided, otherwise parse intent from query
             if engine and engine != "duckduckgo":
                 # Use the provided engine
@@ -291,7 +314,7 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
             return {
                 "query": search_terms,
                 "engine": detected_site,
-                "results": unique_results[:10]
+                "results": unique_results[:max_results]
             }
 
         except Exception as e:

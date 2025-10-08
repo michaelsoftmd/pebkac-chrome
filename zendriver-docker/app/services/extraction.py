@@ -3,6 +3,7 @@ import asyncio
 import logging
 import time
 import hashlib
+import os
 import trafilatura
 from trafilatura import bare_extraction, baseline, extract_metadata
 from typing import Optional, Dict, Any, List
@@ -15,6 +16,13 @@ class UnifiedExtractionService:
     def __init__(self, browser_manager, cache_service=None):
         self.browser_manager = browser_manager
         self.cache = cache_service
+
+        # Load extraction configuration from environment
+        self.word_limit = int(os.getenv("EXTRACTION_WORD_LIMIT", "350"))
+        self.content_display_chars = int(os.getenv("EXTRACTION_CONTENT_DISPLAY_CHARS", "7500"))
+        self.favor_precision = os.getenv("EXTRACTION_FAVOR_PRECISION", "false").lower() == "true"
+        self.include_comments = os.getenv("EXTRACTION_INCLUDE_COMMENTS", "false").lower() == "true"
+        self.include_tables = os.getenv("EXTRACTION_INCLUDE_TABLES", "true").lower() == "true"
     
     async def extract_with_trafilatura(self, tab) -> Dict[str, Any]:
         """Extract content using Trafilatura with full metadata"""
@@ -54,9 +62,9 @@ class UnifiedExtractionService:
             text_output = trafilatura.extract(
                 html,
                 url=url,
-                favor_precision=False,
-                include_comments=False,
-                include_tables=True,
+                favor_precision=self.favor_precision,
+                include_comments=self.include_comments,
+                include_tables=self.include_tables,
                 with_metadata=True,
                 output_format='json',
             )
@@ -141,9 +149,9 @@ class UnifiedExtractionService:
         doc_dict = bare_extraction(
             html,
             url=url,
-            favor_precision=True,
-            include_comments=False,
-            include_tables=True,
+            favor_precision=self.favor_precision,
+            include_comments=self.include_comments,
+            include_tables=self.include_tables,
             deduplicate=True,
             target_language='en'
         )
@@ -260,11 +268,14 @@ class UnifiedExtractionService:
         else:
             return 'very_high'
     
-    def _get_first_words(self, text: str, word_limit: int = 350) -> str:
+    def _get_first_words(self, text: str, word_limit: int = None) -> str:
         """Get first N words without truncating mid-sentence"""
         if not text:
             return ""
-        
+
+        if word_limit is None:
+            word_limit = self.word_limit
+
         words = text.split()
         if len(words) <= word_limit:
             return text
@@ -309,10 +320,10 @@ class UnifiedExtractionService:
                 price_text += f" {data['currency']}"
             result += f"{price_text}\n"
 
-        # Content (100-350 words)
+        # Content (configurable word limit)
         text = data.get('text', '')
         if text:
-            content = self._get_first_words(text, word_limit=350)
+            content = self._get_first_words(text)
             result += f"\n{content}"
 
         # Links if available
@@ -353,7 +364,7 @@ class UnifiedExtractionService:
 
 ## Content
 
-{text[:7500]}{"..." if len(text) > 7500 else ""}
+{text[:self.content_display_chars]}{"..." if len(text) > self.content_display_chars else ""}
 
 ## Statistics
 - Word Count: {len(text.split())}
@@ -383,7 +394,7 @@ class UnifiedExtractionService:
 
 ## Content
 
-{text[:7500] if text else '(No content extracted)'}{"..." if text and len(text) > 7500 else ""}
+{text[:self.content_display_chars] if text else '(No content extracted)'}{"..." if text and len(text) > self.content_display_chars else ""}
 
 ## Statistics
 - Text Length: {text_length} characters
