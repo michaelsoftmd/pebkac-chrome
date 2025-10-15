@@ -634,25 +634,29 @@
                                     messageElement = addMessage('assistant', '');
                                 }
 
-                                // Check if JSON first, otherwise render as markdown
-                                if (isJSON(assistantMessage)) {
-                                    const formattedJSON = formatJSON(assistantMessage);
-                                    messageElement.textContent = '< ' + formattedJSON;
-                                    messageElement.classList.add('json-output');
-                                    messageElement.classList.remove('markdown-output');
-                                } else {
-                                    const markdownContent = marked.parse(assistantMessage);
-                                    messageElement.innerHTML = '< ' + markdownContent;
-                                    messageElement.classList.add('markdown-output');
-                                    messageElement.classList.remove('json-output');
+                                // While streaming, just accumulate - don't format yet
+                                messageElement.textContent = '< ' + assistantMessage;
+                            } else if (json.type === 'done') {
+                                // Stream complete - now format based on content type
+                                if (messageElement && assistantMessage) {
+                                    if (isJSON(assistantMessage)) {
+                                        const formattedJSON = formatJSON(assistantMessage);
+                                        messageElement.textContent = '< ' + formattedJSON;
+                                        messageElement.classList.add('json-output');
+                                        messageElement.classList.remove('markdown-output');
+                                    } else {
+                                        const markdownContent = marked.parse(assistantMessage);
+                                        messageElement.innerHTML = '< ' + markdownContent;
+                                        messageElement.classList.add('markdown-output');
+                                        messageElement.classList.remove('json-output');
+                                    }
                                 }
+                                break;
                             } else if (json.type === 'error') {
                                 addMessage('assistant', json.data, true);
                                 conversationHistory.push({ role: 'assistant', content: `Error: ${json.data}` });
                                 saveChatHistory();
                                 return;
-                            } else if (json.type === 'done') {
-                                break;
                             }
 
                         } catch (e) {
