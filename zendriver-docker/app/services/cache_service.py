@@ -3,21 +3,32 @@ import hashlib
 import json
 import pickle
 import time
+import os
 from typing import Optional, Dict, List, Any, Tuple
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
 from app.utils.cache import CacheManager
 from app.utils.cache_utils import CacheKeyGenerator
+from app.utils.duckdb_client import DuckDBClient
 import logging
 logger = logging.getLogger(__name__)
 
 class ExtractorCacheService:
-    """Cache service for extraction operations"""
+    """Cache service for extraction operations with L1 (Redis) + L2 (DuckDB) tiering"""
 
-    def __init__(self, cache_manager: CacheManager):
+    def __init__(self, cache_manager: CacheManager, duckdb_url: Optional[str] = None):
         self.cache = cache_manager
         # Store reverse mapping for selector optimization
         self._selector_reverse_map: Dict[str, str] = {}
+
+        # Initialize DuckDB L2 cache (optional but recommended)
+        self.duckdb = None
+        if duckdb_url or os.getenv("DUCKDB_URL"):
+            try:
+                self.duckdb = DuckDBClient(duckdb_url or os.getenv("DUCKDB_URL"))
+                logger.info("DuckDB L2 cache initialized")
+            except Exception as e:
+                logger.warning(f"DuckDB L2 cache unavailable: {e}")
 
     def _make_url_key(self, url: str, selector: Optional[str] = None, context: str = "") -> str:
         """Create cache key for URL + selector + context using advanced normalization"""
@@ -37,29 +48,114 @@ class ExtractorCacheService:
         return f"selector:{domain}:{status}:{selector_hash}"
     
     async def get_cached_extraction(self, url: str, selector: Optional[str] = None, context: str = "") -> Optional[Dict]:
-        """Get cached extraction result"""
+        """
+        Get cached extraction result with tiered lookup
+
+        Flow:
+        1. Check L1 (Redis) - 10ms latency
+        2. If miss, check L2 (DuckDB) - 50-100ms latency
+        3. If L2 hit, promote to L1 for future fast access
+        4. Return None if both miss
+        """
         # Don't return cache for search operations
         if self.should_bypass_cache(url, selector or "", context):
             return None
-            
+
         key = self._make_url_key(url, selector, context)
-        return await self.cache.get(key)
+
+        # L1 (Redis) lookup
+        l1_result = await self.cache.get(key)
+        if l1_result:
+            logger.debug(f"L1 cache hit: {key[:50]}")
+            return l1_result
+
+        # L2 (DuckDB) lookup if available
+        if self.duckdb:
+            l2_result = self.duckdb.get_cached_page(key)
+            if l2_result:
+                logger.info(f"L2 cache hit, promoting to L1: {key[:50]}")
+                # Promote to L1 for future fast access
+                await self.cache.set(
+                    key,
+                    l2_result['data'],
+                    ttl=l2_result.get('ttl', 3600)
+                )
+                return l2_result['data']
+
+        # Total miss
+        logger.debug(f"Cache miss (L1+L2): {key[:50]}")
+        return None
     
     async def cache_extraction(self, url: str, selector: Optional[str], data: Dict, ttl: int = 3600, context: str = ""):
-        """Cache extraction result with intelligent TTL"""
+        """
+        Cache extraction result with intelligent TTL
+
+        Dual-write strategy:
+        - L1 (Redis): Always write for fast access
+        - L2 (DuckDB): Write if TTL >= 1 hour OR data size >= 10KB (expensive to re-extract)
+        """
         # Use smart TTL based on selector type and context
         smart_ttl = self.get_cache_ttl(url, selector or "", context)
         if smart_ttl == 0:
             return  # Don't cache
-            
+
         key = self._make_url_key(url, selector, context)
+
+        # Always write to L1 (Redis)
         await self.cache.set(key, data, smart_ttl)
+
+        # Write to L2 (DuckDB) for persistence if:
+        # 1. Long TTL (worth persisting)
+        # 2. Large data (expensive to re-extract)
+        if self.duckdb:
+            data_size = len(pickle.dumps(data))
+
+            should_persist = (
+                smart_ttl >= 3600 or  # 1+ hour TTL
+                data_size > 10_000  # 10KB+ data
+            )
+
+            if should_persist:
+                metadata = {
+                    'url': url,
+                    'title': data.get('metadata', {}).get('title', ''),
+                    'selector': selector or '',
+                    'extraction_method': data.get('extraction_method', 'unknown')
+                }
+
+                self.duckdb.store_cached_page(
+                    cache_key=key,
+                    url=url,
+                    data=data,
+                    ttl=smart_ttl,
+                    metadata=metadata
+                )
+                logger.debug(f"Persisted to L2: {key[:50]} (TTL: {smart_ttl}s, Size: {data_size}b)")
     
     async def track_selector_performance(self, domain: str, selector: str, success: bool):
-        """Track which selectors work/fail for domains"""
+        """
+        Track which selectors work/fail for domains
+
+        Strategy:
+        - Redis: Configurable TTL (default 90 days) for hot access
+        - DuckDB: Persistent storage for long-term memory
+        """
         key = self._make_selector_key(domain, selector, success)
         count = await self.cache.get(key) or 0
-        await self.cache.set(key, count + 1, ttl=86400)  # 24 hours
+
+        # Get selector TTL from environment (default 90 days)
+        selector_ttl = int(os.getenv("CACHE_TTL_SELECTOR", "7776000"))  # 90 days default
+        await self.cache.set(key, count + 1, ttl=selector_ttl)
+
+        # Also sync to DuckDB for persistence
+        if self.duckdb:
+            self.duckdb.store_selector_performance(
+                domain=domain,
+                selector=selector,
+                element_type="general",  # Could be inferred from selector
+                success=success,
+                find_time_ms=None  # Could track timing if needed
+            )
     
     async def get_working_selectors(self, domain: str) -> Dict[str, int]:
         """Get selectors that work for this domain"""
@@ -308,28 +404,102 @@ class ExtractorCacheService:
     async def learn_selector_performance(self, url: str, selector: str, success: bool, response_data: Optional[Dict] = None):
         """Learn from selector performance for future optimization"""
         from urllib.parse import urlparse
-        
+
         try:
             domain = urlparse(url).netloc
             if domain:
                 await self.track_selector_performance(domain, selector, success)
-                
+
                 # Store additional metadata for better learning
                 if response_data and success:
                     content_length = response_data.get("metadata", {}).get("content_length", 0)
                     # Only track selectors that return substantial content
                     if content_length > 50:
+                        # Use same TTL as selector performance tracking
+                        selector_ttl = int(os.getenv("CACHE_TTL_SELECTOR", "7776000"))  # 90 days default
                         key = f"selector_quality:{domain}:{hashlib.md5(selector.encode()).hexdigest()}"
                         await self.cache.set(key, {
                             "content_length": content_length,
                             "success_rate": 1.0,  # Will be updated with running average
                             "last_used": time.time()
-                        }, ttl=86400)
-        
+                        }, ttl=selector_ttl)
+
         except Exception as e:
             logger.error(f"Error learning selector performance: {e}")
             # Re-raise for critical performance tracking failures
             raise RuntimeError(f"Failed to learn selector performance for {url}: {e}") from e
+
+    async def get_comprehensive_stats(self) -> Dict[str, Any]:
+        """
+        Get comprehensive cache statistics across all layers
+
+        Returns:
+            Dict with stats from:
+            - L1 (Redis): memory, keys, hit rate
+            - L2 (DuckDB): page count, size, age
+            - Selectors: total tracked, top domains
+        """
+        stats = {
+            'l1_redis': {
+                'available': False,
+                'memory_used_mb': 0,
+                'keys_count': 0,
+                'selector_count': 0
+            },
+            'l2_duckdb': {
+                'available': False,
+                'page_count': 0,
+                'element_count': 0,
+                'total_size_mb': 0,
+                'oldest_entry_days': None
+            },
+            'selector_memory': {
+                'redis_selectors': 0,
+                'duckdb_selectors': 0,
+                'ttl_days': 90
+            }
+        }
+
+        # L1 (Redis) stats
+        if self.cache.redis_client:
+            try:
+                # Get Redis INFO
+                info = await self.cache.redis_client.info('memory')
+                stats['l1_redis']['available'] = True
+                stats['l1_redis']['memory_used_mb'] = int(info.get('used_memory', 0)) / (1024 * 1024)
+
+                # Count keys
+                dbsize = await self.cache.redis_client.dbsize()
+                stats['l1_redis']['keys_count'] = dbsize
+
+                # Count selector keys
+                selector_count = 0
+                cursor = 0
+                while True:
+                    cursor, keys = await self.cache.redis_client.scan(
+                        cursor, match="selector:*", count=100
+                    )
+                    selector_count += len(keys)
+                    if cursor == 0:
+                        break
+
+                stats['l1_redis']['selector_count'] = selector_count
+                stats['selector_memory']['redis_selectors'] = selector_count
+
+            except Exception as e:
+                logger.error(f"Redis stats error: {e}")
+
+        # L2 (DuckDB) stats
+        if self.duckdb:
+            try:
+                duckdb_stats = self.duckdb.get_stats()
+                stats['l2_duckdb']['available'] = True
+                stats['l2_duckdb'].update(duckdb_stats)
+                stats['selector_memory']['duckdb_selectors'] = duckdb_stats.get('element_count', 0)
+            except Exception as e:
+                logger.error(f"DuckDB stats error: {e}")
+
+        return stats
 
 
 class CacheInvalidationService:

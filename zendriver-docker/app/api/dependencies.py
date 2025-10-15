@@ -56,7 +56,7 @@ def get_substack_service(
     return SubstackService(browser_manager, db_session)
 
 async def get_cache_service() -> ExtractorCacheService:
-    """Get cache service instance"""
+    """Get cache service instance with L1 (Redis) + L2 (DuckDB) tiering"""
     settings = get_settings()
     if not settings.redis_url:
         settings.redis_url = os.getenv("REDIS_URL", "redis://redis-cache:6379")
@@ -67,7 +67,10 @@ async def get_cache_service() -> ExtractorCacheService:
     # Start cleanup task immediately (only runs once due to _cleanup_started flag)
     await cache_manager.ensure_cleanup_running()
 
-    return ExtractorCacheService(cache_manager)
+    # Get DuckDB URL from environment
+    duckdb_url = os.getenv("DUCKDB_URL", "http://duckdb-cache:9001")
+
+    return ExtractorCacheService(cache_manager, duckdb_url=duckdb_url)
 
 def get_agent_manager() -> AgentManager:
     """Get or create agent manager singleton"""

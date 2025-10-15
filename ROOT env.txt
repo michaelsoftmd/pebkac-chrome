@@ -24,9 +24,9 @@ ZENDRIVER_VNC_PASS=password
 
 # Caching variables for Zendriver
 CACHE_TTL_NAVIGATION=300      # 5 minutes
-CACHE_TTL_EXTRACTION=3600     # 1 hour  
+CACHE_TTL_EXTRACTION=3600     # 1 hour
 CACHE_TTL_SEARCH=1800         # 30 minutes
-CACHE_TTL_ELEMENT=86400       # 24 hours
+CACHE_TTL_SELECTOR=7776000    # 90 days (selector performance memory)
 
 # SmolAgents Configuration
 SMOLAGENTS_USE_LOCAL_LLM=true
