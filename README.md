@@ -1,5 +1,7 @@
 # pebkac: The AI-Powered Web Automaton Without The Automation
 
+Update: I've written a more detailed guide on setting up the pebkac environment. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
+
 ## **What This Is**
 
 pebkac browses the web for you. It is a web nonautomation framework powered by SmolAgents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user. There is no MCP, no n8n, no LangChain or LangGraph. pebkac employs the LLM's native ability to control a web browser by writing Python directly into it.
@@ -34,7 +36,7 @@ Frankly, no LLM has been made that **is supposed to** fully operate Google Chrom
 
 The browser runs with noVNC and loads about:blank on startup. You are warned. pebkac is not C-3P0. pebkac is a garden path. pebkac will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While pebkac is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
-Or just give it a job and go do something else. Eat an apple. [Read a book.](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb).
+Or just give it a job and go do something else. Eat an apple. [Read a book.](https://www.amazon.com/Wells-Rest-Mitch-Davis/dp/0646826778?ref_=ast_author_mpb)
 
 You operate it simply by opening the pebkac Control Panel in your browser (localhost:8888) and typing into the chat window. The control panel displays the browser via noVNC and shows live logs from both the browser automation service and the LLM. pebkac will perform its duties and return nicely-formatted results in the chat window.
 
@@ -112,6 +114,8 @@ I am of the opinion that pebkac demonstrates how mainstream approaches to LLMs a
 - **AMD or NVIDIA GPU** for llama.cpp acceleration
 
 ### **Initial Setup**
+For total beginners, start [here.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
+
 1. Clone this repository into your podman directory
 2. Rename the ROOT files to `.env` and `docker-compose.yml`
 3. Configure `docker-compose.yml`:
