@@ -26,6 +26,9 @@ _browser_manager = None
 # Global agent manager instance
 _agent_manager: Optional[AgentManager] = None
 
+# Global cache service instance
+_cache_service: Optional[ExtractorCacheService] = None
+
 
 # ===========================
 # Dependency injection functions
@@ -56,21 +59,26 @@ def get_substack_service(
     return SubstackService(browser_manager, db_session)
 
 async def get_cache_service() -> ExtractorCacheService:
-    """Get cache service instance with L1 (Redis) + L2 (DuckDB) tiering"""
-    settings = get_settings()
-    if not settings.redis_url:
-        settings.redis_url = os.getenv("REDIS_URL", "redis://redis-cache:6379")
+    """Get cache service singleton with L1 (Redis) + L2 (DuckDB) tiering"""
+    global _cache_service
 
-    # Create manager
-    cache_manager = CacheManager(settings)
+    if _cache_service is None:
+        settings = get_settings()
+        if not settings.redis_url:
+            settings.redis_url = os.getenv("REDIS_URL", "redis://redis-cache:6379")
 
-    # Start cleanup task immediately (only runs once due to _cleanup_started flag)
-    await cache_manager.ensure_cleanup_running()
+        # Create manager
+        cache_manager = CacheManager(settings)
 
-    # Get DuckDB URL from environment
-    duckdb_url = os.getenv("DUCKDB_URL", "http://duckdb-cache:9001")
+        # Start cleanup task immediately (only runs once due to _cleanup_started flag)
+        await cache_manager.ensure_cleanup_running()
 
-    return ExtractorCacheService(cache_manager, duckdb_url=duckdb_url)
+        # Get DuckDB URL from environment
+        duckdb_url = os.getenv("DUCKDB_URL", "http://duckdb-cache:9001")
+
+        _cache_service = ExtractorCacheService(cache_manager, duckdb_url=duckdb_url)
+
+    return _cache_service
 
 def get_agent_manager() -> AgentManager:
     """Get or create agent manager singleton"""

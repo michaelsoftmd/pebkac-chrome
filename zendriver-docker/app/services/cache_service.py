@@ -1,4 +1,5 @@
 # app/services/cache_service.py
+import asyncio
 import hashlib
 import json
 import pickle
@@ -71,16 +72,19 @@ class ExtractorCacheService:
 
         # L2 (DuckDB) lookup if available
         if self.duckdb:
-            l2_result = self.duckdb.get_cached_page(key)
-            if l2_result:
-                logger.info(f"L2 cache hit, promoting to L1: {key[:50]}")
-                # Promote to L1 for future fast access
-                await self.cache.set(
-                    key,
-                    l2_result['data'],
-                    ttl=l2_result.get('ttl', 3600)
-                )
-                return l2_result['data']
+            try:
+                l2_result = await asyncio.to_thread(self.duckdb.get_cached_page, key)
+                if l2_result:
+                    logger.info(f"L2 cache hit, promoting to L1: {key[:50]}")
+                    # Promote to L1 for future fast access
+                    await self.cache.set(
+                        key,
+                        l2_result['data'],
+                        ttl=l2_result.get('ttl', 3600)
+                    )
+                    return l2_result['data']
+            except Exception as e:
+                logger.warning(f"L2 cache lookup failed: {e}")
 
         # Total miss
         logger.debug(f"Cache miss (L1+L2): {key[:50]}")
@@ -123,14 +127,19 @@ class ExtractorCacheService:
                     'extraction_method': data.get('extraction_method', 'unknown')
                 }
 
-                self.duckdb.store_cached_page(
-                    cache_key=key,
-                    url=url,
-                    data=data,
-                    ttl=smart_ttl,
-                    metadata=metadata
-                )
-                logger.debug(f"Persisted to L2: {key[:50]} (TTL: {smart_ttl}s, Size: {data_size}b)")
+                # Run synchronous DuckDB call in thread pool to avoid blocking
+                try:
+                    await asyncio.to_thread(
+                        self.duckdb.store_cached_page,
+                        cache_key=key,
+                        url=url,
+                        data=data,
+                        ttl=smart_ttl,
+                        metadata=metadata
+                    )
+                    logger.debug(f"Persisted to L2: {key[:50]} (TTL: {smart_ttl}s, Size: {data_size}b)")
+                except Exception as e:
+                    logger.error(f"L2 cache write failed: {e}")
     
     async def track_selector_performance(self, domain: str, selector: str, success: bool):
         """
@@ -149,13 +158,17 @@ class ExtractorCacheService:
 
         # Also sync to DuckDB for persistence
         if self.duckdb:
-            self.duckdb.store_selector_performance(
-                domain=domain,
-                selector=selector,
-                element_type="general",  # Could be inferred from selector
-                success=success,
-                find_time_ms=None  # Could track timing if needed
-            )
+            try:
+                await asyncio.to_thread(
+                    self.duckdb.store_selector_performance,
+                    domain=domain,
+                    selector=selector,
+                    element_type="general",  # Could be inferred from selector
+                    success=success,
+                    find_time_ms=None  # Could track timing if needed
+                )
+            except Exception as e:
+                logger.warning(f"DuckDB selector tracking failed: {e}")
     
     async def get_working_selectors(self, domain: str) -> Dict[str, int]:
         """Get selectors that work for this domain"""
@@ -492,7 +505,7 @@ class ExtractorCacheService:
         # L2 (DuckDB) stats
         if self.duckdb:
             try:
-                duckdb_stats = self.duckdb.get_stats()
+                duckdb_stats = await asyncio.to_thread(self.duckdb.get_stats)
                 stats['l2_duckdb']['available'] = True
                 stats['l2_duckdb'].update(duckdb_stats)
                 stats['selector_memory']['duckdb_selectors'] = duckdb_stats.get('element_count', 0)
