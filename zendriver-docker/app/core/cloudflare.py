@@ -235,7 +235,9 @@ async def verify_cf(
         if not input_el:
             return False
         try:
-            await input_el
+            # Wait for element to be loaded/attached to DOM
+            await input_el.update()
+            # Re-query to verify element still exists in current DOM
             fresh_input = await host_el.query_selector(current_sltr)
         except Exception as e:
             raise Exception(f"Error checking input element: {e}.")

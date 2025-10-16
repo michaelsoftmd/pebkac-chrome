@@ -86,9 +86,15 @@ class DuckDBClient:
             True if stored successfully
         """
         try:
-            # Extract content from data
+            # Extract full text from data for long-term storage
+            # Priority: raw full text > formatted output > fallback
             if isinstance(data, dict):
-                content = data.get('data', '') or data.get('text', '') or str(data)
+                # Try to get full text from nested data dict
+                if isinstance(data.get('data'), dict):
+                    content = data['data'].get('text', '')
+                # Fallback to formatted_output for backward compatibility
+                if not content:
+                    content = data.get('formatted_output', '') or data.get('text', '') or str(data)
             else:
                 content = str(data)
 

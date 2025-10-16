@@ -115,6 +115,7 @@ class ExtractorCacheService:
             data_size = len(pickle.dumps(data))
 
             should_persist = (
+                (selector or '') == 'universal' or  # Expensive Trafilatura extractions
                 smart_ttl >= 3600 or  # 1+ hour TTL
                 data_size > 10_000  # 10KB+ data
             )
