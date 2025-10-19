@@ -78,12 +78,12 @@ Here's what it does:
 - Validates inputs! I've done much to ensure there is little to no risk from Javascript or SQL injection. Please be careful. I made sure to do this based on an XKCD comic strip I saw in high school: https://m.xkcd.com/327/
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
-Here's what needs work:
+Here's what needs work/new features:
 - Using selector memory to avoid known-bad selectors
-- Version control
-- Managing volume mounts in regards to browser profiles/databases. They can be kept inside the container, I just need to adjust the containers/ports for conflicts.
-- Context window management during long agent sessions
-- This section
+- Opening/closing new browser tabs for the user to peruse, based on relevance to input
+- Live reading of Chrome console logs for dynamic page parsing
+- Voice assist
+- Cleaner shutdown
 
 This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
 
