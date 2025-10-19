@@ -274,11 +274,12 @@ async def store_data(request: dict):
         
         # Insert data
         insert_sql = f"""
-        INSERT INTO {table} (timestamp, data) 
+        INSERT INTO {table} (timestamp, data)
         VALUES (?, ?)
         """
         conn.execute(insert_sql, [timestamp, json.dumps(data)])
-        
+        conn.commit()  # Commit the transaction
+
         return {"status": "stored", "table": table}
     finally:
         await db_pool.release(conn)
@@ -325,7 +326,7 @@ async def cache_page(page: CachedPage):
         
         conn.execute("""
             INSERT OR REPLACE INTO cached_pages
-            (cache_key, url, title, content, extracted_at, ttl_expires, 
+            (cache_key, url, title, content, extracted_at, ttl_expires,
              content_hash, word_count, summary, key_points, entities,
              selector_used, extraction_method, success_rate)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -336,7 +337,8 @@ async def cache_page(page: CachedPage):
             json.dumps(page.entities) if page.entities else None,
             page.selector_used, page.extraction_method, 1.0
         ))
-        
+        conn.commit()  # Commit the transaction to persist data
+
         return {"status": "cached", "expires": expires.isoformat()}
     finally:
         await db_pool.release(conn)
@@ -435,7 +437,8 @@ async def cache_element(element: CachedElement):
                 datetime.now(),
                 element.find_time_ms or 0
             ))
-        
+
+        conn.commit()  # Commit the transaction
         return {"status": "recorded"}
     finally:
         await db_pool.release(conn)
@@ -479,7 +482,7 @@ async def cache_workflow(workflow: WorkflowCache):
     try:
         conn.execute("""
             INSERT OR REPLACE INTO cached_workflows
-            (workflow_id, workflow_type, input_hash, result, 
+            (workflow_id, workflow_type, input_hash, result,
              created_at, accessed_count, total_tokens_saved)
             VALUES (?, ?, ?, ?, ?, 1, ?)
         """, (
@@ -487,7 +490,8 @@ async def cache_workflow(workflow: WorkflowCache):
             workflow.input_hash, json.dumps(workflow.result),
             datetime.now(), workflow.tokens_saved or 0
         ))
-        
+        conn.commit()  # Commit the transaction
+
         return {"status": "cached", "workflow_id": workflow.workflow_id}
     finally:
         await db_pool.release(conn)
@@ -503,7 +507,8 @@ async def get_workflow_cache(workflow_id: str):
             SET accessed_count = accessed_count + 1
             WHERE workflow_id = ?
         """, (workflow_id,))
-        
+        conn.commit()  # Commit the update
+
         result = conn.execute("""
             SELECT workflow_type, result, created_at, accessed_count, total_tokens_saved
             FROM cached_workflows
@@ -588,7 +593,9 @@ async def clear_expired():
             DELETE FROM cached_elements
             WHERE last_used < ? AND success_count < 2
         """, (now - timedelta(days=30),)).rowcount
-        
+
+        conn.commit()  # Commit all deletions
+
         return {
             "pages_deleted": pages_deleted,
             "workflows_deleted": workflows_deleted,

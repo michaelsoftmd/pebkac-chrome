@@ -101,6 +101,7 @@ class ExtractorCacheService:
         # Use smart TTL based on selector type and context
         smart_ttl = self.get_cache_ttl(url, selector or "", context)
         if smart_ttl == 0:
+            logger.debug(f"Skipping cache (TTL=0): {url[:50]}, selector={selector}, context={context}")
             return  # Don't cache
 
         key = self._make_url_key(url, selector, context)
@@ -120,6 +121,9 @@ class ExtractorCacheService:
                 data_size > 10_000  # 10KB+ data
             )
 
+            if not should_persist:
+                logger.debug(f"Skipping L2 (selector={selector}, TTL={smart_ttl}s, size={data_size}b)")
+
             if should_persist:
                 metadata = {
                     'url': url,
@@ -138,7 +142,7 @@ class ExtractorCacheService:
                         ttl=smart_ttl,
                         metadata=metadata
                     )
-                    logger.debug(f"Persisted to L2: {key[:50]} (TTL: {smart_ttl}s, Size: {data_size}b)")
+                    logger.info(f"Persisted to L2: {key[:50]} (TTL: {smart_ttl}s, Size: {data_size}b)")
                 except Exception as e:
                     logger.error(f"L2 cache write failed: {e}")
     

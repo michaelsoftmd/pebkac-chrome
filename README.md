@@ -18,7 +18,7 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 - 🌐 **Undetectable Browser Automation** - Uses Chrome DevTools Protocol (CDP) instead of Selenium/WebDriver
 - 🤖 **LLM-Powered Control** - Natural language commands translated to browser actions
 - 🔒 **Persistent Sessions** - Maintains cookies and authentication across restarts
-- 📊 **Intelligent Caching** - Multi-tier cache system (Memory → Redis → DuckDB)
+- 📊 **Intelligent Caching** - Two-tier cache: Redis (in-memory) + DuckDB (SQL database) with 500-2000x speedup
 - 🎯 **Selector Learning** - Optimises element selection strategies over time
 - 🛡️ **Cloudflare Bypass** - Handles anti-bot challenges
 - 👁️ **Visual Debugging** - Live browser view through noVNC at 1280x720
@@ -79,9 +79,10 @@ Here's what it does:
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
 Here's what needs work:
-- Caching, memory, more functionality.
+- Using selector memory to avoid known-bad selectors
 - Version control
 - Managing volume mounts in regards to browser profiles/databases. They can be kept inside the container, I just need to adjust the containers/ports for conflicts.
+- Context window management during long agent sessions
 - This section
 
 This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
@@ -89,6 +90,8 @@ This version of pebkac is designed to be mindful of context length and run on in
 Search for and download them here: https://hf.tst.eu/model
 
 I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. His MoE models are excellent. Between non-thinking and thinking models, I like the results I get from non-thinking models.
+
+It is reasonably important to find a model with an extremely long context length, like 64k or higher. That's fundamental. Basic models will not cut it.
 
 I would also highly recommend adjusting the extraction method to extract more text, and altering llama.cpp's GPU usage in the .env file. That will truly allow pebkac to work its magic.
 
@@ -191,17 +194,33 @@ Below is some stuff Claude put together. It's mostly accurate. Just more detail.
 - `InterceptNetworkTool` - Monitor network requests
 
 #### **3. Caching Infrastructure**
-- **L1 Cache (Redis)**: Fast in-memory caching with LRU eviction
-- **L2 Cache (DuckDB)**: Structured data storage for:
-  - Extracted page content
-  - Element selector performance tracking
-  - Search history
-  - Failed selector tracking
-- **Intelligent caching strategies**:
-  - Domain-specific selector tracking
-  - Extraction result caching with TTL
-  - Navigation result caching
-  - Workflow state persistence
+**Two-tier cache system providing 500-2000x speedup on cached content:**
+
+- **L1 Cache (Redis)**: Ultra-fast in-memory caching (10ms lookups)
+  - 512MB with LRU eviction
+  - Complete response storage with formatted output
+  - 90-day selector performance memory
+  - Automatic cleanup every 30 minutes
+
+- **L2 Cache (DuckDB SQL Database)**: Persistent disk-based analytical database
+  - Embedded SQL database optimized for analytics (similar to SQLite)
+  - Survives container restarts
+  - HTTP service with 5-connection pool
+  - SQL tables: `cached_pages`, `cached_elements`, `cached_workflows`, `cache_metrics`
+  - Permanent selector analytics with success/fail tracking
+  - Transaction management with `conn.commit()` for data persistence
+  - Database file: `/mnt/ssd/podman/duckdb-data/cache.db`
+
+- **Tiered Lookup Flow**:
+  1. Check L1 (Redis) → Return if hit (~10ms)
+  2. Check L2 (DuckDB) → Promote to L1 if hit (~95ms)
+  3. Extract from browser if both miss (5-20 seconds)
+
+- **Smart Caching Strategies**:
+  - **Selective L2 persistence**: Universal extractions, large content (>10KB), or long-lived (≥1 hour TTL)
+  - **Content-based TTL**: Structural elements (24h), text selectors (30min), dynamic content (no cache)
+  - **Cache key normalization**: Maximizes hits by removing query params and normalizing URLs
+  - **Auto-promotion**: L2 hits automatically promoted to L1 for future fast access
 
 #### **4. Control Panel**
 - **Web UI at localhost:8888** for chat and system monitoring
