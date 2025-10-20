@@ -1,6 +1,6 @@
 # pebkac: The AI-Powered Web Automaton Without The Automation
 
-Update: I've written a more detailed guide on setting up the pebkac environment. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
+Update: I've written a more detailed guide on setting up the pebkac environment. Not required, but helpful. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
 
 ## **What This Is**
 
