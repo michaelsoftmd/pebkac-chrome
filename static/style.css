@@ -590,10 +590,6 @@ body::before {
         margin-top: 0;
     }
 
-    .status-indicator {
-        margin-top: 8px;
-    }
-
     .pebkac-title {
         font-size: 2.0rem;
         letter-spacing: 3px;
