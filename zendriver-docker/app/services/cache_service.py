@@ -19,8 +19,6 @@ class ExtractorCacheService:
 
     def __init__(self, cache_manager: CacheManager, duckdb_url: Optional[str] = None):
         self.cache = cache_manager
-        # Store reverse mapping for selector optimization
-        self._selector_reverse_map: Dict[str, str] = {}
 
         # Initialize DuckDB L2 cache (optional but recommended)
         self.duckdb = None
@@ -44,8 +42,6 @@ class ExtractorCacheService:
         """Cache key for selector performance"""
         status = "works" if success else "fails"
         selector_hash = hashlib.md5(selector.encode()).hexdigest()
-        # Store reverse mapping
-        self._selector_reverse_map[selector_hash] = selector
         return f"selector:{domain}:{status}:{selector_hash}"
     
     async def get_cached_extraction(self, url: str, selector: Optional[str] = None, context: str = "") -> Optional[Dict]:
@@ -174,135 +170,28 @@ class ExtractorCacheService:
                 )
             except Exception as e:
                 logger.warning(f"DuckDB selector tracking failed: {e}")
-    
-    async def get_working_selectors(self, domain: str) -> Dict[str, int]:
-        """Get selectors that work for this domain"""
-        if self.cache.redis_client:
-            try:
-                pattern = f"selector:{domain}:works:*"
-                cursor = 0
-                selectors = {}
-                
-                # Scan Redis for matching keys
-                while True:
-                    cursor, keys = await self.cache.redis_client.scan(
-                        cursor, match=pattern, count=100
-                    )
-                    
-                    for key in keys:
-                        # Get the count for this selector
-                        count = await self.cache.redis_client.get(key)
 
-                        # Extract selector hash from key
-                        # Key format: "selector:domain:works:hash"
-                        key_str = str(key) if hasattr(key, 'decode') else key
-                        if hasattr(key_str, 'decode'):
-                            key_str = key_str.decode('utf-8')
-                        selector_hash = key_str.split(':')[-1]
+    async def get_best_selectors(self, domain: str, element_type: str = "general") -> List[Dict[str, Any]]:
+        """
+        Get best performing selectors for a domain from DuckDB.
 
-                        # Unpickle count value
-                        if count:
-                            selectors[selector_hash] = pickle.loads(count)
-                        else:
-                            selectors[selector_hash] = 0
-                    
-                    if cursor == 0:
-                        break
-                
-                return selectors
-            except Exception as e:
-                logger.error(f"Error getting working selectors: {e}")
-                return {}
-        
-        # Fallback to memory cache scan (less efficient)
-        selectors = {}
-        prefix = f"selector:{domain}:works:"
-        for key in self.cache.memory_cache.keys():
-            if key.startswith(prefix):
-                value, _ = self.cache.memory_cache[key]
-                selector_hash = key.replace(prefix, '')
-                selectors[selector_hash] = value
-        
-        return selectors
-    
-    async def get_failed_selectors(self, domain: str) -> Dict[str, int]:
-        """Get selectors that fail for this domain"""
-        if self.cache.redis_client:
-            try:
-                pattern = f"selector:{domain}:fails:*"
-                cursor = 0
-                selectors = {}
-                
-                # Scan Redis for matching keys
-                while True:
-                    cursor, keys = await self.cache.redis_client.scan(
-                        cursor, match=pattern, count=100
-                    )
-                    
-                    for key in keys:
-                        # Get the count for this selector
-                        count = await self.cache.redis_client.get(key)
+        DuckDB stores actual selector strings and persists across restarts.
+        Returns empty list if DuckDB unavailable.
+        """
+        if not self.duckdb:
+            return []
 
-                        # Extract selector hash from key
-                        # Key format: "selector:domain:fails:hash"
-                        key_str = str(key) if hasattr(key, 'decode') else key
-                        if hasattr(key_str, 'decode'):
-                            key_str = key_str.decode('utf-8')
-                        selector_hash = key_str.split(':')[-1]
-
-                        # Unpickle count value
-                        if count:
-                            selectors[selector_hash] = pickle.loads(count)
-                        else:
-                            selectors[selector_hash] = 0
-                    
-                    if cursor == 0:
-                        break
-                
-                return selectors
-            except Exception as e:
-                logger.error(f"Error getting failed selectors: {e}")
-                return {}
-        
-        # Fallback to memory cache scan (less efficient)
-        selectors = {}
-        prefix = f"selector:{domain}:fails:"
-        for key in self.cache.memory_cache.keys():
-            if key.startswith(prefix):
-                value, _ = self.cache.memory_cache[key]
-                selector_hash = key.replace(prefix, '')
-                selectors[selector_hash] = value
-        
-        return selectors
-
-    async def get_best_selectors(self, domain: str) -> List[Dict[str, Any]]:
-        """Get best performing selectors for a domain"""
-        working = await self.get_working_selectors(domain)
-        failed = await self.get_failed_selectors(domain)
-        
-        # Calculate success rates
-        selector_stats = []
-        all_hashes = set(working.keys()) | set(failed.keys())
-        
-        for selector_hash in all_hashes:
-            works = working.get(selector_hash, 0)
-            fails = failed.get(selector_hash, 0)
-            total = works + fails
-            
-            if total > 0:
-                success_rate = works / total
-                selector_stats.append({
-                    "hash": selector_hash,
-                    "success_rate": success_rate,
-                    "success_count": works,
-                    "fail_count": fails,
-                    "total_attempts": total
-                })
-        
-        # Sort by success rate, then by total attempts (more attempts = more reliable)
-        selector_stats.sort(key=lambda x: (x['success_rate'], x['total_attempts']), reverse=True)
-        
-        return selector_stats[:10]  # Return top 10
+        try:
+            selectors = await asyncio.to_thread(
+                self.duckdb.get_best_selectors,
+                domain,
+                element_type
+            )
+            logger.debug(f"Got {len(selectors)} best selectors from DuckDB for {domain}")
+            return selectors
+        except Exception as e:
+            logger.error(f"Failed to get best selectors from DuckDB: {e}")
+            return []
 
     def _sanitize_value(self, value: Any) -> str:
         """Handle RemoteObject and other types consistently"""
@@ -383,15 +272,18 @@ class ExtractorCacheService:
     async def get_optimized_selector(self, url: str, element_type: str = "general") -> Optional[str]:
         """Get best performing selector for this domain/element type"""
         from urllib.parse import urlparse
-        
+
         try:
             domain = urlparse(url).netloc
             if not domain:
                 return None
-                
-            # Get best selectors for this domain
-            best_selectors = await self.get_best_selectors(domain)
-            
+
+            # Get best selectors for this domain from DuckDB
+            best_selectors = await self.get_best_selectors(domain, element_type)
+
+            if not best_selectors:
+                return None
+
             # Filter by element type if specified
             type_filters = {
                 "navigation": ["nav", "header", "footer", "menu"],
@@ -400,21 +292,21 @@ class ExtractorCacheService:
                 "links": ["a", "link"],
                 "general": []  # No filter for general
             }
-            
+
             filters = type_filters.get(element_type, [])
-            
+
             for selector_info in best_selectors:
-                if selector_info['success_rate'] > 0.8:  # 80% success threshold
-                    selector_hash = selector_info['hash']
-                    selector = self._selector_reverse_map.get(selector_hash)
-                    
+                if selector_info.get('success_rate', 0) > 0.8:  # 80% success threshold
+                    selector = selector_info.get('selector')
+
                     if selector:
                         # If no filters or selector matches filter
                         if not filters or any(f in selector.lower() for f in filters):
+                            logger.info(f"Using optimized selector for {domain}: {selector} (success_rate: {selector_info['success_rate']:.2%})")
                             return selector
-            
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Error getting optimized selector: {e}")
             return None

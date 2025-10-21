@@ -9,7 +9,7 @@ import logging
 from app.core.browser import BrowserManager
 from app.core.exceptions import BrowserError, ElementNotFoundError
 from app.core.timeouts import TIMEOUTS
-from app.models.requests import NavigationRequest, ClickRequest
+from app.models.requests import NavigationRequest, ClickRequest, OpenBackgroundTabRequest, CloseTabRequest
 from app.services.element import ElementService
 from app.api.dependencies import get_browser_manager, get_element_service
 from app.utils.browser_utils import safe_evaluate
@@ -204,3 +204,129 @@ async def load_cookies(
     browser = await browser_manager.get_browser()
     await browser.cookies.load(file)
     return {"status": "loaded", "file": file}
+
+
+# ===========================
+# Tab Management
+# ===========================
+
+@router.post("/tabs/open_background")
+async def open_background_tab(
+    browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
+    request: OpenBackgroundTabRequest
+):
+    """
+    Open a URL in a new background tab while keeping tab 0 (main tab) active.
+
+    This allows loading content in background without interrupting the main workflow.
+    The new tab will load but tab 0 will remain the active/focused tab.
+    """
+    try:
+        # Use BrowserManager service layer
+        tab_index, total_tabs = await browser_manager.create_background_tab(str(request.url))
+
+        return {
+            "status": "success",
+            "message": f"Opened {request.url} in background tab",
+            "tab_index": tab_index,
+            "total_tabs": total_tabs
+        }
+    except Exception as e:
+        logger.error(f"Failed to open background tab: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to open background tab: {str(e)}"
+        )
+
+
+@router.get("/tabs/list")
+async def list_tabs(
+    browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)]
+):
+    """
+    List all open tabs with their URLs and indices.
+
+    Tab 0 is the main/active tab and cannot be closed.
+    """
+    try:
+        browser = await browser_manager.get_browser()
+        tabs = browser.tabs
+
+        tab_list = []
+        for idx, tab in enumerate(tabs):
+            try:
+                # Get URL safely
+                url = await safe_evaluate(tab, "window.location.href") or "about:blank"
+            except Exception:
+                url = "unknown"
+
+            tab_list.append({
+                "index": idx,
+                "url": url,
+                "is_main_tab": idx == 0,
+                "closeable": idx != 0  # Only background tabs are closeable
+            })
+
+        return {
+            "total_tabs": len(tabs),
+            "tabs": tab_list
+        }
+    except Exception as e:
+        logger.error(f"Failed to list tabs: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to list tabs: {str(e)}"
+        )
+
+
+@router.post("/tabs/close")
+async def close_tab(
+    browser_manager: Annotated[BrowserManager, Depends(get_browser_manager)],
+    request: CloseTabRequest
+):
+    """
+    Close a background tab by index.
+
+    SAFETY CONSTRAINT: Cannot close tab 0 (the main/active tab).
+    Only background tabs (index >= 1) can be closed.
+    """
+    # Safety check: NEVER allow closing tab 0 (already validated by pydantic)
+    if request.tab_index == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot close main tab (tab 0). Only background tabs can be closed."
+        )
+
+    try:
+        browser = await browser_manager.get_browser()
+        tabs = browser.tabs
+
+        # Validate tab index
+        if request.tab_index < 0 or request.tab_index >= len(tabs):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tab index {request.tab_index}. Valid range: 1-{len(tabs)-1}"
+            )
+
+        # Close the tab
+        tab_to_close = tabs[request.tab_index]
+        await tab_to_close.close()
+
+        # Ensure main tab is active
+        if len(tabs) > 1:
+            main_tab = tabs[0]
+            await main_tab.activate()
+
+        return {
+            "status": "success",
+            "message": f"Closed tab {request.tab_index}",
+            "remaining_tabs": len(tabs) - 1
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to close tab {request.tab_index}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to close tab: {str(e)}"
+        )

@@ -85,57 +85,120 @@ class GetElementPositionTool(Tool):
             return f"Position error: {str(e)}"
 
 
-class InterceptNetworkTool(Tool):
-    name = "intercept_network"
-    description = """Intercept network requests matching a URL pattern. Currently limited to Document resource type.
+class CaptureAPIResponseTool(Tool):
+    name = "capture_api_response"
+    description = """Capture API/AJAX response data during navigation or interaction.
 
-ACTIONS:
-- log: Monitor requests without blocking (default)
-- block: Prevent requests from loading
-- modify: Intercept and modify response (experimental)
+Modern websites load data via JavaScript APIs instead of rendering it in HTML.
+This tool captures those API responses as structured JSON, which is often cleaner
+and more reliable than extracting from HTML.
 
-URL PATTERNS:
-- Wildcards: '*.jpg', '*api*', '*analytics*'
-- Specific: 'https://example.com/api/*'
+Args:
+    action: "navigate" to load a URL, or "click" to click an element
+    url: URL to navigate to (required if action="navigate")
+    selector: Element to click (required if action="click")
+    api_pattern: Regex to match API URLs (optional - if omitted, captures all JSON responses)
+    timeout: Seconds to wait for API response (default: 5)
 
-LIMITATIONS:
-- Only intercepts Document resources (not XHR/Fetch)
-- Single-use: Catches one request then stops
-- Results not returned to agent (runs in background)
+Returns:
+    If api_pattern provided: {"url": "...", "data": {...}} - single response
+    If api_pattern omitted: [{"url": "...", "data": {...}}, ...] - all JSON responses
 
-NOTE: For capturing dynamic AJAX data, see network-monitoring-proposal.md
+Common API patterns:
+    - Product data: ".*/api/product/.*"
+    - Search results: ".*/search.*" or ".*autocomplete.*"
+    - User data: ".*/api/user/.*" or ".*/api/me"
+    - GraphQL: ".*/graphql"
+    - Any JSON file: ".*\\.json$"
+    - Any API: ".*/api/.*"
 
-Returns confirmation that interception started."""
+Examples:
+    # Get product data (know the pattern)
+    data = capture_api_response(
+        action="navigate",
+        url="https://amazon.com/product/B08XYZ",
+        api_pattern=".*/api/product/.*"
+    )
+    # Returns: {"url": "https://api.amazon.com/product/B08XYZ", "data": {"price": 348.00, ...}}
+
+    # Explore all APIs (auto-discovery mode)
+    responses = capture_api_response(
+        action="navigate",
+        url="https://example.com/search?q=headphones"
+    )
+    # Returns: [{"url": "...", "data": {...}}, {"url": "...", "data": {...}}, ...]
+
+    # Capture infinite scroll data
+    data = capture_api_response(
+        action="click",
+        selector=".load-more",
+        api_pattern=".*/api/posts.*"
+    )
+
+Why use this instead of extract_content?
+    - Structured JSON data vs messy HTML extraction
+    - More reliable (API contracts more stable than HTML selectors)
+    - Faster (single JSON parse vs multiple DOM queries)
+    - More complete (APIs often return data not shown in UI)
+"""
     inputs = {
-        "url_pattern": {"type": "string", "description": "URL pattern to intercept"},
         "action": {
             "type": "string",
-            "description": "Action: block, modify, or log",
-            "default": "log",
+            "description": "'navigate' to load URL or 'click' to click element"
+        },
+        "url": {
+            "type": "string",
+            "description": "URL to navigate to (if action='navigate')",
+            "nullable": True
+        },
+        "selector": {
+            "type": "string",
+            "description": "CSS selector to click (if action='click')",
+            "nullable": True
+        },
+        "api_pattern": {
+            "type": "string",
+            "description": "Regex pattern to match API URL (optional - omit to capture all JSON)",
+            "nullable": True
+        },
+        "timeout": {
+            "type": "integer",
+            "description": "Seconds to wait for API response (default: 5)",
+            "default": 5,
             "nullable": True
         }
     }
-    output_type = "string"
+    output_type = "any"
 
     def __init__(self, api_url: str):
         super().__init__()
         self.api_url = api_url
-        self.client = httpx.Client(timeout=TIMEOUTS.http_request)
+        self.client = httpx.Client(timeout=30)  # Longer timeout for API capture
 
-    def forward(self, url_pattern: str, action: str = "log") -> str:
-        """Start network interception"""
+    def forward(self, action: str, url: str = None, selector: str = None,
+                api_pattern: str = None, timeout: int = 5):
+        """Capture API responses during action"""
         try:
             response = self.client.post(
-                f"{self.api_url}/intercept/start",
+                f"{self.api_url}/api/capture_response",
                 json={
-                    "url_pattern": url_pattern,
-                    "resource_type": "Document",
-                    "action": action
-                }
+                    "action": action,
+                    "url": url,
+                    "selector": selector,
+                    "api_pattern": api_pattern,
+                    "timeout": timeout
+                },
+                timeout=timeout + 10  # Extra time for HTTP overhead
             )
+
             if response.status_code == 200:
-                data = response.json()
-                return f"Interception started for pattern: {url_pattern} with action: {action}"
-            return f"Failed to start interception"
+                return response.json()
+            else:
+                return {
+                    "error": f"API capture failed with status {response.status_code}",
+                    "detail": response.text
+                }
         except Exception as e:
-            return f"Interception error: {str(e)}"
+            return {
+                "error": f"API capture error: {str(e)}"
+            }

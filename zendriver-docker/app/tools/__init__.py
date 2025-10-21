@@ -6,7 +6,8 @@ from .browser_tools import NavigateBrowserTool, GetCurrentURLTool, ClickElementT
 from .extraction_tools import ExtractContentTool, ParallelExtractionTool, CapturePageMarkdownTool
 from .search_tools import WebSearchTool, SearchHistoryTool, VisitWebpageTool
 from .cloudflare_tools import CloudflareBypassTool
-from .utility_tools import ScreenshotTool, GetElementPositionTool, InterceptNetworkTool
+from .utility_tools import ScreenshotTool, GetElementPositionTool, CaptureAPIResponseTool
+from .tab_tools import OpenBackgroundTabTool, ListTabsTool, CloseTabTool
 
 __all__ = [
     # Browser control
@@ -32,5 +33,10 @@ __all__ = [
     # Utilities
     'ScreenshotTool',
     'GetElementPositionTool',
-    'InterceptNetworkTool'
+    'CaptureAPIResponseTool',
+
+    # Tab management
+    'OpenBackgroundTabTool',
+    'ListTabsTool',
+    'CloseTabTool'
 ]

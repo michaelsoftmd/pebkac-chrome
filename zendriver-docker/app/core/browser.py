@@ -162,6 +162,33 @@ class BrowserManager:
             _browser_tab = await browser.new_tab("about:blank")
             return _browser_tab
 
+    async def create_background_tab(self, url: str) -> tuple[int, int]:
+        """
+        Create a new background tab without switching away from main tab.
+
+        Args:
+            url: URL to open in the background tab
+
+        Returns:
+            tuple[int, int]: (tab_index, total_tabs)
+        """
+        main_tab = await self.get_tab()
+        browser = await self.get_browser()
+
+        # Create new tab using CDP Target.createTarget
+        target_id = await main_tab.send(cdp.target.create_target(url))
+
+        # Get updated tab list
+        tabs = browser.tabs
+        tab_index = len(tabs) - 1  # New tab is typically last
+
+        # Switch back to main tab (tab 0)
+        if tabs and len(tabs) > 0:
+            await tabs[0].activate()
+            logger.info(f"Created background tab {tab_index} for {url}, returned to main tab")
+
+        return tab_index, len(tabs)
+
     async def _create_browser(self):
         """Create browser with persistent session data"""
         # Kill old Chrome processes more selectively (only oldest ones)

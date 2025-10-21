@@ -24,6 +24,21 @@ class WebSearchTool(Tool):
     name = "web_search"
     description = """Search the web using various search engines or search within specific sites. Returns Python dict with results array.
 
+AFTER SEARCHING - OPENING TABS FOR THE USER:
+After reviewing search results, use open_background_tab() to pre-load the most relevant pages FOR THE USER.
+- Analyze result titles and domains for relevance to the user's query
+- Consider: authority (official sites, known publishers), title relevance, avoiding ads/spam/outdated content
+- Typically open 1-3 of the most useful results in background tabs
+- Main tab (tab 0) stays on search results for reference
+- User can then click through pre-loaded tabs to explore
+
+Example workflow:
+  results = web_search("best wireless headphones 2025")
+  # Analyze: result[0] is RTINGS (authoritative), result[2] is Wirecutter (trusted)
+  open_background_tab(url=results["results"][0]["url"])  # Pre-load for user
+  open_background_tab(url=results["results"][2]["url"])  # Pre-load for user
+  final_answer("Found 10 results, opened top 2 reviews for you to explore")
+
 ENGINES SUPPORTED:
 - duckduckgo (default): General web search
 - google: Google search
@@ -285,6 +300,13 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
                 # Wait for results to load
                 time.sleep(3)
 
+            # Capture search results page URL to return to after extraction
+            current_url_response = self.client.get(f"{self.api_url}/get_current_url")
+            search_results_url = None
+            if current_url_response.status_code == 200:
+                search_results_url = current_url_response.json().get("url", "")
+                logger.info(f"Captured search results URL: {search_results_url}")
+
             # Extract results
             extract_response = self.client.post(
                 f"{self.api_url}/extraction/extract",
@@ -344,7 +366,18 @@ NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser ins
                     result["domain"] = urlparse(result["url"]).netloc
                     unique_results.append(result)
 
+            # Navigate back to search results page to ensure main tab stays on results
+            # This allows user to reference results while exploring background tabs
+            if search_results_url:
+                logger.info(f"Returning to search results page: {search_results_url}")
+                self.client.post(
+                    f"{self.api_url}/navigate",
+                    json={"url": search_results_url}
+                )
+                time.sleep(1)  # Brief wait for page to load
+
             # Return Python dict - SmolAgents will handle stringification
+            # Note: No auto-opening of tabs - LLM decides which results to open based on relevance
             return {
                 "query": search_terms,
                 "engine": detected_site,

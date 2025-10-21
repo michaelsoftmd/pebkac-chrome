@@ -61,7 +61,7 @@ body::before {
     padding: 20px 2rem;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     min-height: 60px;
     pointer-events: none;
 }
@@ -574,7 +574,6 @@ body::before {
     align-items: center;
     gap: 1rem;
     flex-shrink: 0;
-    margin-top: 5px;
 }
 
 /* Responsive */

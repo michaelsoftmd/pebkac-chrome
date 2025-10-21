@@ -174,3 +174,41 @@ class TypeRequest(BaseModel):
         if v and not validate_css_selector(v):
             raise ValueError(f"Invalid or unsafe selector: {v}")
         return v
+
+class OpenBackgroundTabRequest(BaseModel):
+    """Request to open a URL in background tab"""
+    url: HttpUrl | str
+
+    @field_validator('url')
+    @classmethod
+    def validate_url(cls, v):
+        # Block potentially dangerous URLs
+        blocked_patterns = [
+            r'javascript:',
+            r'data:',
+            r'file://',
+            r'chrome://',
+            r'about:config'
+        ]
+
+        url_str = str(v).lower()
+        for pattern in blocked_patterns:
+            if re.match(pattern, url_str):
+                raise ValueError(f"Blocked URL pattern: {pattern}")
+
+        # Add https if no protocol
+        if isinstance(v, str) and not v.startswith(('http://', 'https://')):
+            v = f'https://{v}'
+
+        return v
+
+class CloseTabRequest(BaseModel):
+    """Request to close a background tab"""
+    tab_index: int = Field(..., ge=1, description="Tab index to close (must be >= 1, tab 0 is protected)")
+
+    @field_validator('tab_index')
+    @classmethod
+    def validate_tab_index(cls, v):
+        if v == 0:
+            raise ValueError("Cannot close tab 0 (main tab). Only background tabs can be closed.")
+        return v

@@ -1,6 +1,6 @@
 # pebkac: The AI-Powered Web Automaton Without The Automation
 
-Update: I've written a more detailed guide on setting up the pebkac environment. Not required, but helpful. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
+Update: I've written a more detailed guide on setting up the pebkac environment. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
 
 ## **What This Is**
 
@@ -15,15 +15,33 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 
 ### Core Capabilities
 
-- 🌐 **Undetectable Browser Automation** - Uses Chrome DevTools Protocol (CDP) instead of Selenium/WebDriver
-- 🤖 **LLM-Powered Control** - Natural language commands translated to browser actions
-- 🔒 **Persistent Sessions** - Maintains cookies and authentication across restarts
-- 📊 **Intelligent Caching** - Two-tier cache: Redis (in-memory) + DuckDB (SQL database) with 500-2000x speedup
-- 🎯 **Selector Learning** - Optimises element selection strategies over time
-- 🛡️ **Cloudflare Bypass** - Handles anti-bot challenges
-- 👁️ **Visual Debugging** - Live browser view through noVNC at 1280x720
-- 📝 **Content Extraction** - Advanced text extraction using Trafilatura
-- 💬 **Chat Interface** - Minimal terminal-style UI for natural language interaction at localhost:8888
+**Autonomous Intelligence**
+- 🧠 **Code-Writing LLM** - Writes Python with loops, conditions, error handling (not limited to sequential tool calls like LangChain)
+- 🎯 **Multi-Step Reasoning** - Works through complex tasks independently over 10 configurable steps
+- 🔄 **Self-Correction** - Tries alternative strategies when approaches fail
+
+**Stealth & Persistence**
+- 👻 **Undetectable Automation** - Bypasses anti-bot detection (Cloudflare, etc.) using real Chrome instead of WebDriver
+- 🔐 **Persistent Sessions** - Remembers logins and cookies across restarts (sign in once, done)
+- 🛡️ **Anti-Bot Bypass** - Automatically handles challenges and verification pages
+
+**Smart Data Extraction**
+- 📊 **Intelligent Content Extraction** - Trafilatura parses web pages like a human reader (ignores ads, navigation, footers)
+- 🎯 **API Response Capture** - Extracts structured JSON from modern websites instead of scraping messy HTML
+- ⚡ **Extreme Caching** - 500-2000x faster on repeat visits (Redis + DuckDB two-tier cache)
+- 📑 **Tab Management** - Opens relevant pages in background for you to explore later
+
+**User Experience**
+- 💬 **Chat Interface** - Type natural language commands at localhost:8888
+- 👁️ **Live Browser View** - Watch what it's doing via noVNC (1280x720)
+- 📝 **Detailed Logging** - See every decision and action in real-time
+- 🔍 **Web Search Integration** - Searches DuckDuckGo and filters out junk results
+
+**Performance Features**
+- 🚀 **Parallel Operations** - Extracts multiple page elements simultaneously
+- 🎨 **Form Automation** - Types with human-like delays, handles keyboard navigation
+- 📸 **Screenshot Capture** - Visual verification of page state
+- 📊 **Selector Learning** - Remembers which CSS selectors work per site and reuses them automatically (survives restarts)
 
 ### 🚀 Why pebkac Outperforms Traditional Solutions
 **The Game-Changer: LLMs Write Python, Not JSON**
@@ -78,12 +96,24 @@ Here's what it does:
 - Validates inputs! I've done much to ensure there is little to no risk from Javascript or SQL injection. Please be careful. I made sure to do this based on an XKCD comic strip I saw in high school: https://m.xkcd.com/327/
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
-Here's what needs work/new features:
-- Using selector memory to avoid known-bad selectors
-- Opening/closing new browser tabs for the user to peruse, based on relevance to input
-- Live reading of Chrome console logs for dynamic page parsing
-- Voice assist
-- Cleaner shutdown
+## What Needs Work
+
+**Infrastructure:**
+- Version control and release management
+- Volume mount optimization for browser profiles/databases
+- Breaking down documentation into separate files (currently single massive README)
+
+**Performance:**
+- Context window management during long agent sessions
+- Smarter token usage and pruning strategies
+- Memory optimization for extended sessions
+
+**Features Under Consideration:**
+- Voice input via local Whisper (see `speech-to-text-plan.md`)
+- Advanced selector prediction (ML-based selector generation)
+- Workflow templates for common tasks
+- Multi-browser support (Firefox, Edge)
+- Better error recovery and retry strategies
 
 This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
 
@@ -152,12 +182,17 @@ Below is some stuff Claude put together. It's mostly accurate. Just more detail.
 - Runs in a **virtual Wayland/Sway display** with full GPU acceleration (1280x720 default)
 - **VNC debugging** on port 5910 for visual monitoring
 - **Browser profiles** persist across sessions at `/tmp/pebkac_profiles/`
+- **Clean architectural separation**:
+  - Routes handle high-level business logic
+  - BrowserManager service layer encapsulates CDP operations
+  - Only protocol-level routes (network.py) use CDP directly
 - Full API with endpoints for:
   - Navigation with wait conditions
   - Element finding by selector or text
   - Clicking, typing (with human-like delays)
   - Scrolling (directional and to elements)
-  - Tab navigation
+  - Tab management (create, list, close)
+  - API response capture
   - Element discovery
   - Content extraction with fallbacks
   - Parallel operations
@@ -168,7 +203,7 @@ Below is some stuff Claude put together. It's mostly accurate. Just more detail.
 - **Local LLM inference** via llama.cpp with Vulkan GPU acceleration
 - **Integrated AgentManager** runs inside zendriver container (no separate service)
 
-**Tool suite for agents (15 tools in zendriver-docker/app/tools/)**:
+**Tool suite for agents (18 tools in zendriver-docker/app/tools/)**:
 
 ### Browser Control
 - `NavigateBrowserTool` - Navigate to URLs
@@ -178,20 +213,27 @@ Below is some stuff Claude put together. It's mostly accurate. Just more detail.
 - `GetCurrentURLTool` - Get current page URL
 
 ### Content Extraction
-- `ExtractContentTool` - Extract page content
-- `ParallelExtractionTool` - Extract from multiple selectors
-- `GarboPageMarkdownTool` - Export page as Markdown
+- `ExtractContentTool` - Extract page content with intelligent link extraction
+- `ParallelExtractionTool` - Extract from multiple selectors simultaneously
+- `CapturePageMarkdownTool` - Export page as Markdown
 
 ### Search & Navigation
-- `WebSearchTool` - Search various search engines
-- `VisitWebpageTool` - Visit and extract page content
-- `SearchHistoryTool` - Access cached searches
+- `WebSearchTool` - Search DuckDuckGo with result filtering (LLM decides which tabs to open)
+- `VisitWebpageTool` - Visit and extract page content in one call
+- `SearchHistoryTool` - Access cached search results
 
-### Utility Tools
+### Tab Management (NEW)
+- `OpenBackgroundTabTool` - Open URLs in background while keeping main tab active
+- `ListTabsTool` - List all tabs with indices and status
+- `CloseTabTool` - Close background tabs (tab 0 protected)
+
+### API & Network
+- `CaptureAPIResponseTool` - Capture JSON API responses during navigate/click (structured data extraction)
+
+### Advanced Tools
 - `ScreenshotTool` - Capture screenshots
-- `CloudflareBypassTool` - Handle anti-bot challenges
-- `GetElementPositionTool` - Get element coordinates
-- `InterceptNetworkTool` - Monitor network requests
+- `CloudflareBypassTool` - Handle anti-bot challenges automatically
+- `GetElementPositionTool` - Get element coordinates for verification
 
 #### **3. Caching Infrastructure**
 **Two-tier cache system providing 500-2000x speedup on cached content:**

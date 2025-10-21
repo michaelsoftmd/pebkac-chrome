@@ -28,7 +28,10 @@ from app.tools import (
     CloudflareBypassTool,
     ScreenshotTool,
     GetElementPositionTool,
-    InterceptNetworkTool
+    CaptureAPIResponseTool,
+    OpenBackgroundTabTool,
+    ListTabsTool,
+    CloseTabTool
 )
 
 logger = logging.getLogger(__name__)
@@ -91,7 +94,12 @@ class AgentManager:
             # Utilities
             ScreenshotTool(self.zendriver_api_url),
             GetElementPositionTool(self.zendriver_api_url),
-            InterceptNetworkTool(self.zendriver_api_url)
+            CaptureAPIResponseTool(self.zendriver_api_url),
+
+            # Tab management
+            OpenBackgroundTabTool(self.zendriver_api_url),
+            ListTabsTool(self.zendriver_api_url),
+            CloseTabTool(self.zendriver_api_url)
         ]
 
     def create_agent(self) -> SafeCodeAgent:
