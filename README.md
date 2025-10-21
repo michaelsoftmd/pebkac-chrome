@@ -97,23 +97,8 @@ Here's what it does:
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
 ## What Needs Work
-
-**Infrastructure:**
-- Version control and release management
-- Volume mount optimization for browser profiles/databases
-- Breaking down documentation into separate files (currently single massive README)
-
-**Performance:**
-- Context window management during long agent sessions
-- Smarter token usage and pruning strategies
-- Memory optimization for extended sessions
-
-**Features Under Consideration:**
-- Voice input via local Whisper (see `speech-to-text-plan.md`)
+- Voice assist
 - Advanced selector prediction (ML-based selector generation)
-- Workflow templates for common tasks
-- Multi-browser support (Firefox, Edge)
-- Better error recovery and retry strategies
 
 This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
 
