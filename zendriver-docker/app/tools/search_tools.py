@@ -22,56 +22,27 @@ logger = logging.getLogger(__name__)
 
 class WebSearchTool(Tool):
     name = "web_search"
-    description = """Search the web using various search engines or search within specific sites. Returns Python dict with results array.
+    description = """Search the web using various search engines. Returns dict with results array.
 
-AFTER SEARCHING - OPENING TABS FOR THE USER:
-After reviewing search results, use open_background_tab() to pre-load the most relevant pages FOR THE USER.
-- Analyze result titles and domains for relevance to the user's query
-- Consider: authority (official sites, known publishers), title relevance, avoiding ads/spam/outdated content
-- Typically open 1-3 of the most useful results in background tabs
-- Main tab (tab 0) stays on search results for reference
-- User can then click through pre-loaded tabs to explore
+AFTER SEARCHING:
+Analyze result relevance, then open 1-3 most valuable pages in background tabs for user.
+Example: After searching reviews, open authoritative sites for user to explore.
 
-Example workflow:
-  results = web_search("best wireless headphones 2025")
-  # Analyze: result[0] is RTINGS (authoritative), result[2] is Wirecutter (trusted)
-  open_background_tab(url=results["results"][0]["url"])  # Pre-load for user
-  open_background_tab(url=results["results"][2]["url"])  # Pre-load for user
-  final_answer("Found 10 results, opened top 2 reviews for you to explore")
+ENGINES: duckduckgo (default), google, amazon, youtube, wikipedia, reddit, github, bing
 
-ENGINES SUPPORTED:
-- duckduckgo (default): General web search
-- google: Google search
-- amazon: Product search on Amazon
-- youtube: Video search
-- wikipedia: Encyclopedia search
-- reddit: Community discussions
-- github: Code repositories
-- bing: Microsoft search
+PAGINATION:
+- First call: web_search("query") → First page results
+- More results: web_search("query", load_more=True) → Next page (must be on results page)
+- Chain multiple load_more calls for additional pages
 
-USAGE EXAMPLES:
-- Simple: web_search("wireless headphones") → DuckDuckGo, 10 results
-- More results: web_search("laptops", max_results=30) → 30 results (from first page)
-- Explicit: web_search("laptops", engine="amazon") → Amazon product search
-- Natural: web_search("search google for python tutorials") → Auto-detects Google
-- Site-specific: web_search("react hooks on github") → Auto-detects GitHub
-
-PAGINATION (getting more results):
-- First search: web_search("query") → Returns first page
-- Load more: web_search("query", load_more=True) → Clicks More Results/Next, returns additional results
-- Chain calls: Keep calling with load_more=True until you have enough results or get "No more results"
-- IMPORTANT: load_more only works if you're still on the results page from previous search
-
-RESULT LIMITS:
-- Default: 10 results per page (keeps context low)
-- Use max_results=20-30 for broad searches or when you need more options
-- Use max_results=40-50 for comprehensive product comparisons
-- Max limit: 50 results per call (use load_more for additional pages)
+LIMITS:
+- Default: 10 results per page
+- Max: 50 results per call (use load_more for more)
+- Adjust max_results for broader searches (20-50)
 
 RETURNS: Dict with 'query', 'engine', 'results' (array of {title, url, domain})
-ACCESS: urls = [r['url'] for r in search_result['results']]
 
-NOT FOR NAVIGATION: Don't use for 'go to example.com' - use navigate_browser instead"""
+NOT FOR NAVIGATION: Use navigate_browser to go directly to sites"""
     inputs = {
         "query": {"type": "string", "description": "Search query"},
         "engine": {
@@ -416,16 +387,24 @@ class VisitWebpageTool(Tool):
     name = "visit_webpage"
     description = """Navigate to a URL and automatically extract its content. Combines navigation + extraction in one step.
 
+USE THIS TOOL to extract content from multiple URLs. It navigates to each URL and extracts content.
+
 FEATURES:
-- Navigates to URL
+- Navigates to URL in tab 0 (main tab)
 - Waits for page load
 - Extracts main content using Trafilatura (strips nav/ads)
 - Returns page title and content (up to 2000 chars)
 
 USE CASES:
-- Quick content preview from search results
-- Extract article/documentation content
-- Get page summary without manual extraction
+- Extract content from multiple search result URLs
+- Get article/documentation content
+- Quick content preview without manual extraction
+
+Example - Extract from multiple URLs:
+    results = web_search("best pizza Brisbane")
+    for result in results["results"][:3]:
+        content = visit_webpage(url=result["url"])
+        print(content)
 
 OPTIONAL:
 - wait_for: CSS selector to wait for before extracting (for dynamic content)

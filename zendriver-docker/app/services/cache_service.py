@@ -345,16 +345,24 @@ class ExtractorCacheService:
 
         Returns:
             Dict with stats from:
-            - L1 (Redis): memory, keys, hit rate
+            - L1 (Redis): memory, keys, hit rate, evictions
             - L2 (DuckDB): page count, size, age
             - Selectors: total tracked, top domains
+            - Research sessions: execution history stats
         """
         stats = {
             'l1_redis': {
                 'available': False,
                 'memory_used_mb': 0,
+                'memory_limit_mb': 512,
+                'memory_usage_percent': 0,
                 'keys_count': 0,
-                'selector_count': 0
+                'selector_count': 0,
+                'extract_count': 0,
+                'keyspace_hits': 0,
+                'keyspace_misses': 0,
+                'hit_rate_percent': 0,
+                'evicted_keys': 0
             },
             'l2_duckdb': {
                 'available': False,
@@ -367,33 +375,64 @@ class ExtractorCacheService:
                 'redis_selectors': 0,
                 'duckdb_selectors': 0,
                 'ttl_days': 90
+            },
+            'research_sessions': {
+                'available': False,
+                'total_executions': 0,
+                'completed_count': 0,
+                'incomplete_count': 0,
+                'avg_steps': 0,
+                'recent_24h': 0
             }
         }
 
         # L1 (Redis) stats
         if self.cache.redis_client:
             try:
-                # Get Redis INFO
-                info = await self.cache.redis_client.info('memory')
-                stats['l1_redis']['available'] = True
-                stats['l1_redis']['memory_used_mb'] = int(info.get('used_memory', 0)) / (1024 * 1024)
+                # Get Redis INFO for memory and stats
+                memory_info = await self.cache.redis_client.info('memory')
+                stats_info = await self.cache.redis_client.info('stats')
 
-                # Count keys
+                stats['l1_redis']['available'] = True
+
+                # Memory stats
+                memory_used = int(memory_info.get('used_memory', 0)) / (1024 * 1024)
+                stats['l1_redis']['memory_used_mb'] = round(memory_used, 2)
+                stats['l1_redis']['memory_usage_percent'] = round((memory_used / 512) * 100, 1)
+
+                # Hit rate stats
+                hits = int(stats_info.get('keyspace_hits', 0))
+                misses = int(stats_info.get('keyspace_misses', 0))
+                total = hits + misses
+
+                stats['l1_redis']['keyspace_hits'] = hits
+                stats['l1_redis']['keyspace_misses'] = misses
+                stats['l1_redis']['hit_rate_percent'] = round((hits / total * 100), 1) if total > 0 else 0
+                stats['l1_redis']['evicted_keys'] = int(stats_info.get('evicted_keys', 0))
+
+                # Count total keys
                 dbsize = await self.cache.redis_client.dbsize()
                 stats['l1_redis']['keys_count'] = dbsize
 
-                # Count selector keys
+                # Count selector keys and extract keys
                 selector_count = 0
+                extract_count = 0
                 cursor = 0
                 while True:
                     cursor, keys = await self.cache.redis_client.scan(
-                        cursor, match="selector:*", count=100
+                        cursor, match="*:*", count=100
                     )
-                    selector_count += len(keys)
+                    for key in keys:
+                        key_str = key.decode('utf-8') if isinstance(key, bytes) else key
+                        if key_str.startswith('selector:'):
+                            selector_count += 1
+                        elif key_str.startswith('extract:'):
+                            extract_count += 1
                     if cursor == 0:
                         break
 
                 stats['l1_redis']['selector_count'] = selector_count
+                stats['l1_redis']['extract_count'] = extract_count
                 stats['selector_memory']['redis_selectors'] = selector_count
 
             except Exception as e:
@@ -408,6 +447,57 @@ class ExtractorCacheService:
                 stats['selector_memory']['duckdb_selectors'] = duckdb_stats.get('element_count', 0)
             except Exception as e:
                 logger.error(f"DuckDB stats error: {e}")
+
+        # Research sessions stats (SQLite)
+        try:
+            from app.core.database import get_db, ResearchSession
+            from datetime import datetime, timedelta
+
+            db = next(get_db())
+            try:
+                # Total count
+                total = db.query(ResearchSession).count()
+
+                # Status counts
+                completed = db.query(ResearchSession).filter(
+                    ResearchSession.status == 'completed'
+                ).count()
+
+                # Recent (24h)
+                yesterday = datetime.now() - timedelta(days=1)
+                recent = db.query(ResearchSession).filter(
+                    ResearchSession.created_at >= yesterday
+                ).count()
+
+                # Average steps (from data JSON)
+                sessions_with_steps = db.query(ResearchSession).filter(
+                    ResearchSession.data.isnot(None)
+                ).all()
+
+                total_steps = 0
+                step_count = 0
+                for session in sessions_with_steps:
+                    if session.data and isinstance(session.data, dict):
+                        steps = session.data.get('step_count', 0)
+                        if steps > 0:
+                            total_steps += steps
+                            step_count += 1
+
+                avg_steps = round(total_steps / step_count, 1) if step_count > 0 else 0
+
+                stats['research_sessions'] = {
+                    'available': True,
+                    'total_executions': total,
+                    'completed_count': completed,
+                    'incomplete_count': total - completed,
+                    'avg_steps': avg_steps,
+                    'recent_24h': recent
+                }
+            finally:
+                db.close()
+
+        except Exception as e:
+            logger.error(f"Research sessions stats error: {e}")
 
         return stats
 

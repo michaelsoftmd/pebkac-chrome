@@ -28,14 +28,16 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 **Smart Data Extraction**
 - 📊 **Intelligent Content Extraction** - Trafilatura parses web pages like a human reader (ignores ads, navigation, footers)
 - 🎯 **API Response Capture** - Extracts structured JSON from modern websites instead of scraping messy HTML
-- ⚡ **Extreme Caching** - 500-2000x faster on repeat visits (Redis + DuckDB two-tier cache)
-- 📑 **Tab Management** - Opens relevant pages in background for you to explore later
+- ⚡ **Extreme Caching** - 500-2000x faster on repeat visits (Redis + DuckDB two-tier cache with hit rate tracking)
+- 📑 **Tab Management** - Opens relevant pages (max 3) in background after extracting their content for user exploration
+- 📜 **Execution History** - Automatically saves all agent runs to SQLite with query, result, and step tracking
 
 **User Experience**
 - 💬 **Chat Interface** - Type natural language commands at localhost:8888
 - 👁️ **Live Browser View** - Watch what it's doing via noVNC (1280x720)
 - 📝 **Detailed Logging** - See every decision and action in real-time
 - 🔍 **Web Search Integration** - Searches DuckDuckGo and filters out junk results
+- 📊 **Cache Statistics** - Monitor L1/L2 cache performance, hit rates, memory usage, and execution history
 
 **Performance Features**
 - 🚀 **Parallel Operations** - Extracts multiple page elements simultaneously
@@ -89,16 +91,19 @@ Here's what it does:
 - Coordinates its own tool use so it doesn't get confused. It won't extract before navigating, and knows what page it's already on.
 - Combines its usage of tools mid-step (with async). Remember how I said it has ten steps to complete a task? Inside each of those steps the LLM makes its own decisions about how to work.
 - Decides its own workflows. Aside from operating a browser search, its methods are decided on-the-fly.
+- Remembers its workflows after each run. All data is collected.
 - Navigates, types, searches, clicks, visits, extracts, takes screenshots, exports markdown, bypasses cloudflare, fills forms.
 - Tries, fails, and LEARNS. If one strategy fails, another might work.
 - Parses text intelligently. Trafilatura is excellent and its responses are formatted cleanly.
+- Caches useful and relevant data extensvely and returns it when required, conserving massive amounts of context.
 - Logs each action extensively. All logfiles are available in the control panel.
-- Validates inputs! I've done much to ensure there is little to no risk from Javascript or SQL injection. Please be careful. I made sure to do this based on an XKCD comic strip I saw in high school: https://m.xkcd.com/327/
+- Validates inputs! I've done much to ensure there is little to no risk from Javascript or SQL injection. Please be careful. I made sure to do this based on an xkcd comic strip I saw in high school: https://m.xkcd.com/327/
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
-## What Needs Work
-- Voice assist
-- Advanced selector prediction (ML-based selector generation)
+**Features Under Consideration:**
+- Voice assist (delayed due to hardware)
+- Vision assist
+
 
 This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
 
@@ -106,7 +111,7 @@ Search for and download them here: https://hf.tst.eu/model
 
 I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. His MoE models are excellent. Between non-thinking and thinking models, I like the results I get from non-thinking models.
 
-It is reasonably important to find a model with an extremely long context length, like 64k or higher. That's fundamental. Basic models will not cut it.
+It is reasonably important to find a model with an extremely long context length, like 64k or higher.
 
 I would also highly recommend adjusting the extraction method to extract more text, and altering llama.cpp's GPU usage in the .env file. That will truly allow pebkac to work its magic.
 
@@ -233,7 +238,7 @@ Below is some stuff Claude put together. It's mostly accurate. Just more detail.
   - Embedded SQL database optimized for analytics (similar to SQLite)
   - Survives container restarts
   - HTTP service with 5-connection pool
-  - SQL tables: `cached_pages`, `cached_elements`, `cached_workflows`, `cache_metrics`
+  - SQL tables: `cached_pages`, `cached_elements`, `cache_metrics`
   - Permanent selector analytics with success/fail tracking
   - Transaction management with `conn.commit()` for data persistence
   - Database file: `/mnt/ssd/podman/duckdb-data/cache.db`

@@ -84,5 +84,6 @@ def get_agent_manager() -> AgentManager:
     """Get or create agent manager singleton"""
     global _agent_manager
     if _agent_manager is None:
-        _agent_manager = AgentManager()
+        db_manager = get_database_manager()
+        _agent_manager = AgentManager(database_manager=db_manager)
     return _agent_manager

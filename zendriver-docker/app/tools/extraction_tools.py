@@ -19,22 +19,22 @@ logger = logging.getLogger(__name__)
 
 class ExtractContentTool(Tool):
     name = "extract_content"
-    description = """Extract content from the current page. Returns text and links from matched elements.
+    description = """Extract content from the CURRENT ACTIVE TAB (tab 0). Returns text and links.
+
+IMPORTANT: Extracts from tab 0 only (the main tab).
+- CANNOT extract from background tabs - use visit_webpage(url) instead
+- Background tabs remain separate from automation
 
 SELECTOR TIPS:
-- Leave empty for automatic intelligent extraction (uses Trafilatura)
-- Product listings: 'div[data-component-type="s-search-result"]', 'article', '.product-item', '[class*="product"]'
-- Prices: 'span.price', '.price-value', '[class*="price"]', '[data-price]'
-- Links: 'a[href*="/dp/"]' (Amazon products), 'a.product-link', 'h2 a', 'h3 a'
-- Titles/headings: 'h1', 'h2', 'h3', '[data-cy="title"]', '.product-title'
-- Main content: 'main', 'article', '[role="main"]', '#content'
-- Use attribute selectors for precision: '[data-*]', '[aria-label*=""]', '[href*="keyword"]'
-- If results look wrong (nav/footer links), use more specific selectors or data attributes
+- Empty selector = automatic extraction (Trafilatura)
+- Common patterns: '.price', 'h2 a', 'article', '.product-item'
+- Attribute selectors for precision: '[data-*]', '[href*="keyword"]', '[class*="product"]'
+- Avoid nav/footer: Use specific selectors like 'main article' or data attributes
 
-WHEN TO USE:
-- Extract main page content without selector
-- Extract specific elements with CSS selector
-- Get links from a page (automatically includes hrefs)"""
+USE CASES:
+- Extract main content (no selector)
+- Extract specific elements (CSS selector)
+- Get links from page (hrefs included automatically)"""
     inputs = {
         "selector": {
             "type": "string",

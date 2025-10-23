@@ -12,25 +12,21 @@ from smolagents import Tool
 
 class OpenBackgroundTabTool(Tool):
     name = "open_background_tab"
-    description = """Open a URL in a new background tab without switching away from the main tab.
+    description = """Open valuable pages in background tabs AFTER extracting their content.
 
-    This is useful when you want to load content in the background while continuing to work
-    in the main tab (tab 0). The new tab will load but won't interrupt your workflow.
+    IMPORTANT: Tab 0 is the ONLY operable tab. Tabs 1-3 are background tabs for user exploration.
+    Maximum 3 background tabs should be opened.
 
-    Args:
-        url: URL to open in the background tab
+    WORKFLOW:
+    1. Extract content from URLs using visit_webpage()
+    2. Analyze which pages are most valuable
+    3. Open those valuable pages (max 3) in background tabs for user
 
-    Returns:
-        Dict with status, tab_index, and total_tabs
+    You should already know what's on the page before opening it in a background tab.
 
-    Example usage:
-        # Load a product page in background while staying on search results
-        open_background_tab(url="https://example.com/product/123")
+    Example: After visiting 5 review sites, open the 2-3 best ones for user to read in full.
 
-        # Continue working in main tab
-        extract_content(selector=".search-results")
-
-    Note: Tab 0 is the main tab and will remain active. Background tabs are indexed 1, 2, 3, etc.
+    Note: Background tabs are read-only for the user - only tab 0 is operable for automation.
     """
 
     inputs = {

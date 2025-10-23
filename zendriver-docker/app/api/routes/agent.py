@@ -10,7 +10,8 @@ from pydantic import BaseModel
 import logging
 
 from app.services.agent_manager import AgentManager
-from app.api.dependencies import get_agent_manager
+from app.api.dependencies import get_agent_manager, get_database_manager
+from app.core.database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 
@@ -112,4 +113,36 @@ async def get_last_result():
             }
     except Exception as e:
         logger.error(f"Failed to get last result: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/api/agent/history")
+async def get_execution_history(limit: int = 20, workflow_id: Optional[str] = None):
+    """
+    Get execution history from research sessions
+
+    Query params:
+    - limit: Number of recent executions to return (default: 20, max: 100)
+    - workflow_id: Optional specific workflow ID to retrieve
+
+    Returns:
+    - List of execution records with query, result, step count, and timestamps
+    """
+    try:
+        db_manager = get_database_manager()
+
+        # Limit maximum to prevent large responses
+        limit = min(limit, 100)
+
+        sessions = db_manager.get_research_sessions(
+            workflow_id=workflow_id,
+            limit=limit
+        )
+
+        return {
+            "status": "success",
+            "count": len(sessions),
+            "sessions": sessions
+        }
+    except Exception as e:
+        logger.error(f"Failed to get execution history: {e}")
         raise HTTPException(status_code=500, detail=str(e))

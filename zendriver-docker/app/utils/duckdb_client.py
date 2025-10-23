@@ -229,20 +229,16 @@ class DuckDBClient:
                 return {
                     'page_count': stats.get('total_pages', 0),
                     'element_count': stats.get('total_elements', 0),
-                    'workflow_count': stats.get('total_workflows', 0),
                     'total_size_mb': stats.get('cache_size_mb', 0),
-                    'oldest_entry_days': oldest_entry_days,
-                    'avg_tokens_saved': stats.get('avg_tokens_saved', 0)
+                    'oldest_entry_days': oldest_entry_days
                 }
             else:
                 logger.warning(f"DuckDB stats failed: {response.status_code}")
                 return {
                     'page_count': 0,
                     'element_count': 0,
-                    'workflow_count': 0,
                     'total_size_mb': 0,
-                    'oldest_entry_days': None,
-                    'avg_tokens_saved': 0
+                    'oldest_entry_days': None
                 }
 
         except Exception as e:
@@ -250,10 +246,8 @@ class DuckDBClient:
             return {
                 'page_count': 0,
                 'element_count': 0,
-                'workflow_count': 0,
                 'total_size_mb': 0,
                 'oldest_entry_days': None,
-                'avg_tokens_saved': 0,
                 'error': str(e)
             }
 
@@ -264,7 +258,7 @@ class DuckDBClient:
         Trigger DuckDB cleanup of expired entries
 
         Returns:
-            Dict with counts of deleted pages, workflows, selectors
+            Dict with counts of deleted pages and selectors
         """
         try:
             response = self.client.delete(f"{self.duckdb_url}/cache/expired")
@@ -273,8 +267,8 @@ class DuckDBClient:
                 return response.json()
             else:
                 logger.warning(f"DuckDB cleanup failed: {response.status_code}")
-                return {'pages_deleted': 0, 'workflows_deleted': 0, 'selectors_deleted': 0}
+                return {'pages_deleted': 0, 'selectors_deleted': 0}
 
         except Exception as e:
             logger.error(f"DuckDB cleanup_expired error: {e}")
-            return {'pages_deleted': 0, 'workflows_deleted': 0, 'selectors_deleted': 0, 'error': str(e)}
+            return {'pages_deleted': 0, 'selectors_deleted': 0, 'error': str(e)}

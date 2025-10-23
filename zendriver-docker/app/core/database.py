@@ -31,18 +31,6 @@ class ResearchSession(Base):
     data = Column(JSON)
     status = Column(String, default="pending")
 
-class CollectedPost(Base):
-    __tablename__ = "collected_posts"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    url = Column(String, unique=True, index=True)
-    publication = Column(String, index=True)
-    title = Column(String)
-    author = Column(String)
-    published_date = Column(String)
-    collected_at = Column(DateTime, server_default=func.now())
-    content = Column(Text)
-    data = Column(JSON)
 
 # Database initialization
 def init_db():
@@ -143,29 +131,3 @@ class DatabaseManager:
         finally:
             db.close()
     
-    def save_collected_post(self, post_data: Dict[str, Any]):
-        """Save collected post data"""
-        db = next(get_db())
-        try:
-            post = CollectedPost(
-                url=post_data.get('url'),
-                publication=post_data.get('publication'),
-                title=post_data.get('title'),
-                author=post_data.get('author'),
-                published_date=post_data.get('published_date'),
-                content=post_data.get('content'),
-                data=post_data
-            )
-            db.add(post)
-            db.commit()
-        finally:
-            db.close()
-
-class Selector(Base):
-    __tablename__ = "selectors"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    domain = Column(String, index=True)
-    selector = Column(String)
-    description = Column(String)
-    worked = Column(Boolean, default=True)

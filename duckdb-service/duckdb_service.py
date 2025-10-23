@@ -80,22 +80,10 @@ class DuckDBPool:
                 """)
                 
                 conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_domain_type 
+                    CREATE INDEX IF NOT EXISTS idx_domain_type
                     ON cached_elements(domain, element_type)
                 """)
-                
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS cached_workflows (
-                        workflow_id VARCHAR PRIMARY KEY,
-                        workflow_type VARCHAR,
-                        input_hash VARCHAR(32),
-                        result JSON,
-                        created_at TIMESTAMP,
-                        accessed_count INTEGER DEFAULT 1,
-                        total_tokens_saved INTEGER
-                    )
-                """)
-                
+
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS cache_metrics (
                         timestamp TIMESTAMP,
@@ -165,18 +153,9 @@ class CachedElement(BaseModel):
     success: bool = True
     find_time_ms: Optional[float] = None
 
-class WorkflowCache(BaseModel):
-    workflow_id: str
-    workflow_type: str
-    input_hash: str
-    result: Dict[str, Any]
-    tokens_saved: Optional[int] = None
-
 class CacheStats(BaseModel):
     total_pages: int
     total_elements: int
-    total_workflows: int
-    avg_tokens_saved: float
     cache_size_mb: float
     oldest_entry: Optional[datetime]
     newest_entry: Optional[datetime]
@@ -475,62 +454,6 @@ async def get_best_selector(domain: str, element_type: str):
     finally:
         await db_pool.release(conn)
 
-@app.post("/cache/workflow")
-async def cache_workflow(workflow: WorkflowCache):
-    """Store workflow results"""
-    conn = await db_pool.acquire()
-    try:
-        conn.execute("""
-            INSERT OR REPLACE INTO cached_workflows
-            (workflow_id, workflow_type, input_hash, result,
-             created_at, accessed_count, total_tokens_saved)
-            VALUES (?, ?, ?, ?, ?, 1, ?)
-        """, (
-            workflow.workflow_id, workflow.workflow_type,
-            workflow.input_hash, json.dumps(workflow.result),
-            datetime.now(), workflow.tokens_saved or 0
-        ))
-        conn.commit()  # Commit the transaction
-
-        return {"status": "cached", "workflow_id": workflow.workflow_id}
-    finally:
-        await db_pool.release(conn)
-
-@app.get("/cache/workflow/{workflow_id}")
-async def get_workflow_cache(workflow_id: str):
-    """Retrieve cached workflow results"""
-    conn = await db_pool.acquire()
-    try:
-        # Increment access count
-        conn.execute("""
-            UPDATE cached_workflows
-            SET accessed_count = accessed_count + 1
-            WHERE workflow_id = ?
-        """, (workflow_id,))
-        conn.commit()  # Commit the update
-
-        result = conn.execute("""
-            SELECT workflow_type, result, created_at, accessed_count, total_tokens_saved
-            FROM cached_workflows
-            WHERE workflow_id = ?
-        """, (workflow_id,)).fetchone()
-        
-        if not result:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        
-        workflow_type, result_json, created_at, accessed_count, tokens_saved = result
-        
-        return {
-            "workflow_id": workflow_id,
-            "workflow_type": workflow_type,
-            "result": json.loads(result_json),
-            "created_at": created_at.isoformat() if created_at else None,
-            "accessed_count": accessed_count,
-            "tokens_saved": tokens_saved
-        }
-    finally:
-        await db_pool.release(conn)
-
 @app.get("/cache/stats")
 async def get_cache_stats() -> CacheStats:
     """Get cache statistics"""
@@ -539,30 +462,22 @@ async def get_cache_stats() -> CacheStats:
         # Get counts
         pages_count = conn.execute("SELECT COUNT(*) FROM cached_pages").fetchone()[0]
         elements_count = conn.execute("SELECT COUNT(*) FROM cached_elements").fetchone()[0]
-        workflows_count = conn.execute("SELECT COUNT(*) FROM cached_workflows").fetchone()[0]
-        
-        # Get average tokens saved
-        avg_tokens = conn.execute("""
-            SELECT AVG(total_tokens_saved) FROM cached_workflows
-        """).fetchone()[0] or 0
-        
+
         # Get date range
         oldest = conn.execute("""
             SELECT MIN(extracted_at) FROM cached_pages
         """).fetchone()[0]
-        
+
         newest = conn.execute("""
             SELECT MAX(extracted_at) FROM cached_pages
         """).fetchone()[0]
-        
+
         # Estimate cache size
         db_size = os.path.getsize(DB_PATH) / (1024 * 1024) if os.path.exists(DB_PATH) else 0
-        
+
         return CacheStats(
             total_pages=pages_count,
             total_elements=elements_count,
-            total_workflows=workflows_count,
-            avg_tokens_saved=avg_tokens,
             cache_size_mb=db_size,
             oldest_entry=oldest,
             newest_entry=newest
@@ -576,18 +491,12 @@ async def clear_expired():
     conn = await db_pool.acquire()
     try:
         now = datetime.now()
-        
+
         # Delete expired pages
         pages_deleted = conn.execute("""
             DELETE FROM cached_pages WHERE ttl_expires < ?
         """, (now,)).rowcount
-        
-        # Delete old workflows (>7 days)
-        workflows_deleted = conn.execute("""
-            DELETE FROM cached_workflows 
-            WHERE created_at < ? AND accessed_count < 3
-        """, (now - timedelta(days=7),)).rowcount
-        
+
         # Delete unused selectors (>30 days)
         selectors_deleted = conn.execute("""
             DELETE FROM cached_elements
@@ -598,7 +507,6 @@ async def clear_expired():
 
         return {
             "pages_deleted": pages_deleted,
-            "workflows_deleted": workflows_deleted,
             "selectors_deleted": selectors_deleted
         }
     finally:

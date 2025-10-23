@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 class AgentManager:
     """Manages SmolAgents CodeAgent instances with llama.cpp integration"""
 
-    def __init__(self, llama_cpp_url: str = None):
+    def __init__(self, llama_cpp_url: str = None, database_manager = None):
         self.llama_cpp_url = llama_cpp_url or os.getenv("ACTIVE_OPENAI_URL", "http://llama-cpp-server:8080/v1")
         # Tools call localhost since AgentManager runs inside zendriver container
         self.zendriver_api_url = os.getenv("ZENDRIVER_API_URL", "http://localhost:8080")
@@ -57,6 +57,9 @@ class AgentManager:
 
         # Stream configuration
         self.stream_chunk_size = int(os.getenv("AGENT_STREAM_CHUNK_SIZE", "75"))
+
+        # Database manager for execution history
+        self.db_manager = database_manager
 
         # Create OpenAI client pointing to llama.cpp
         self.openai_client = OpenAI(
@@ -210,6 +213,30 @@ class AgentManager:
             self.last_result = formatted_result
             self.last_result_time = time.time()
             self.last_query = query
+
+            # Save execution history to SQLite
+            if self.db_manager:
+                try:
+                    step_count = len(result.logs) if hasattr(result, 'logs') else 0
+                    execution_data = {
+                        "query": query,
+                        "result": formatted_result[:1000],  # Truncate to 1000 chars for storage
+                        "step_count": step_count,
+                        "completed_at": time.time(),
+                        "status": "completed" if hasattr(result, 'output') and result.output else "incomplete"
+                    }
+
+                    workflow_id = request_id or f"exec_{int(time.time())}"
+                    topic = query[:200] if len(query) > 200 else query
+
+                    self.db_manager.save_research_session(
+                        workflow_id=workflow_id,
+                        topic=topic,
+                        data=execution_data
+                    )
+                    logger.info(f"Saved execution to research sessions: {workflow_id}")
+                except Exception as e:
+                    logger.warning(f"Failed to save research session: {e}")  # Non-critical
 
             for i in range(0, len(formatted_result), self.stream_chunk_size):
                 chunk = formatted_result[i:i+self.stream_chunk_size]
