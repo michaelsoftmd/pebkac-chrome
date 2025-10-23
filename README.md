@@ -52,7 +52,7 @@ Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, pebkac
 
 This also means that pebkac is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API.
 
-Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome.
+Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome. (No longer correct, but pebkac is, and always will be, free and open-source)
 
 The browser runs with noVNC and loads about:blank on startup. You are warned. pebkac is not C-3P0. pebkac is a garden path. pebkac will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While pebkac is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
