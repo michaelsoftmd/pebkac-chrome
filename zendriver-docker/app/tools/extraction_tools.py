@@ -25,16 +25,22 @@ IMPORTANT: Extracts from tab 0 only (the main tab).
 - CANNOT extract from background tabs - use visit_webpage(url) instead
 - Background tabs remain separate from automation
 
-SELECTOR TIPS:
-- Empty selector = automatic extraction (Trafilatura)
-- Common patterns: '.price', 'h2 a', 'article', '.product-item'
-- Attribute selectors for precision: '[data-*]', '[href*="keyword"]', '[class*="product"]'
-- Avoid nav/footer: Use specific selectors like 'main article' or data attributes
+SELECTOR DISCOVERY:
+Empty selector = automatic extraction (Trafilatura). For targeted extraction, discover selectors by:
+1. Inspecting page structure (look for semantic HTML, data attributes, unique IDs)
+2. Testing selectors incrementally (start broad, refine with classes/attributes)
+3. Prefer specific selectors over generic ones
 
-USE CASES:
-- Extract main content (no selector)
-- Extract specific elements (CSS selector)
-- Get links from page (hrefs included automatically)"""
+Flexible selector patterns to try:
+- Products: '.product', '[data-product-id]', 'article[class*="product"]'
+- Prices: '.price', '[data-price]', 'span[class*="price"]'
+- Links: 'a[href*="keyword"]', '.link-container a', 'nav a'
+- Text content: 'article', 'main', '.content', '[role="main"]'
+- Attributes: '[data-*]', '[aria-label*="..."]', '[class*="..."]'
+
+Avoid overly-generic selectors like 'a' or 'div' - be specific to get meaningful content.
+
+Links are automatically extracted (hrefs included in results)."""
     inputs = {
         "selector": {
             "type": "string",

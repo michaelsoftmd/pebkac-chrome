@@ -22,27 +22,25 @@ logger = logging.getLogger(__name__)
 
 class WebSearchTool(Tool):
     name = "web_search"
-    description = """Search the web using various search engines. Returns dict with results array.
+    description = """Search the web using search engines (DuckDuckGo, Google, etc). Returns dict with results array.
+
+IMPORTANT - Two Types of Search:
+1. Web search (this tool): Searches DuckDuckGo/Google/etc for results across the web
+2. Site search (not this tool): To search WITHIN a specific site, navigate to that site and use its own search box
+
+If user asks to search within a site, navigate to it and find the search input dynamically:
+- Try 'input[type="search"]', 'input[name*="search"]', 'input[placeholder*="Search"]'
+- Inspect the page to discover the actual selector - don't hardcode or guess generic selectors
 
 AFTER SEARCHING:
-Analyze result relevance, then open 1-3 most valuable pages in background tabs for user.
-Example: After searching reviews, open authoritative sites for user to explore.
+Analyze results, visit relevant pages to extract content. Optionally open 1-3 most valuable pages in background
+tabs for user exploration (not required for every search).
 
 ENGINES: duckduckgo (default), google, amazon, youtube, wikipedia, reddit, github, bing
 
-PAGINATION:
-- First call: web_search("query") → First page results
-- More results: web_search("query", load_more=True) → Next page (must be on results page)
-- Chain multiple load_more calls for additional pages
+PAGINATION: web_search("query", load_more=True) for next page. Chain multiple calls for more results.
 
-LIMITS:
-- Default: 10 results per page
-- Max: 50 results per call (use load_more for more)
-- Adjust max_results for broader searches (20-50)
-
-RETURNS: Dict with 'query', 'engine', 'results' (array of {title, url, domain})
-
-NOT FOR NAVIGATION: Use navigate_browser to go directly to sites"""
+RETURNS: Dict with 'query', 'engine', 'results' array (each result has title, url, domain)"""
     inputs = {
         "query": {"type": "string", "description": "Search query"},
         "engine": {

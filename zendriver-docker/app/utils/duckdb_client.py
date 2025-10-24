@@ -88,6 +88,8 @@ class DuckDBClient:
         try:
             # Extract full text from data for long-term storage
             # Priority: raw full text > formatted output > fallback
+            content = ''  # Initialize to prevent UnboundLocalError
+
             if isinstance(data, dict):
                 # Try to get full text from nested data dict
                 if isinstance(data.get('data'), dict):

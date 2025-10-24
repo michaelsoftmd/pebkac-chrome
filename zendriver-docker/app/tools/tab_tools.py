@@ -12,22 +12,30 @@ from smolagents import Tool
 
 class OpenBackgroundTabTool(Tool):
     name = "open_background_tab"
-    description = """Open valuable pages in background tabs AFTER extracting their content.
+    description = """Open valuable pages in background tabs for user exploration (OPTIONAL - only when truly helpful).
 
-    IMPORTANT: Tab 0 is the ONLY operable tab. Tabs 1-3 are background tabs for user exploration.
-    Maximum 3 background tabs should be opened.
+IMPORTANT: Tab 0 is the ONLY operable tab. Tabs 1-3 are background tabs. Maximum 3 background tabs.
 
-    WORKFLOW:
-    1. Extract content from URLs using visit_webpage()
-    2. Analyze which pages are most valuable
-    3. Open those valuable pages (max 3) in background tabs for user
+WHEN TO USE:
+- User explicitly asks to "open" or "load" pages
+- Pages contain long-form content valuable for manual reading (reviews, articles, documentation)
+- You've already visited/extracted the pages and identified them as high-value
 
-    You should already know what's on the page before opening it in a background tab.
+WHEN NOT TO USE:
+- Just extracting data (use visit_webpage instead)
+- Quick fact-finding tasks (no need to open tabs)
+- Single-page queries (already on tab 0)
 
-    Example: After visiting 5 review sites, open the 2-3 best ones for user to read in full.
+WORKFLOW:
+1. Visit and extract content from URLs using visit_webpage()
+2. Analyze which pages have substantial user value (not just data)
+3. IF valuable for user reading, open 1-3 best pages in background
 
-    Note: Background tabs are read-only for the user - only tab 0 is operable for automation.
-    """
+You should already know what's on the page before opening it in a background tab.
+
+Example: After visiting 5 review sites for product research, open the 2 most comprehensive reviews for user to read.
+
+Note: Background tabs are for user exploration - only tab 0 is operable for automation."""
 
     inputs = {
         "url": {"type": "string", "description": "URL to open in background tab"}

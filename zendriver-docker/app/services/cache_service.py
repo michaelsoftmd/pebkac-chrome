@@ -284,6 +284,18 @@ class ExtractorCacheService:
             if not best_selectors:
                 return None
 
+            # Overly-generic selectors to exclude from optimization
+            # These technically "work" but match too much content to be useful
+            generic_blacklist = [
+                "a[href]",  # All links
+                "a",        # All links
+                "div",      # All divs
+                "span",     # All spans
+                "p",        # All paragraphs (unless specific context)
+                "button",   # All buttons
+                "img"       # All images
+            ]
+
             # Filter by element type if specified
             type_filters = {
                 "navigation": ["nav", "header", "footer", "menu"],
@@ -300,6 +312,11 @@ class ExtractorCacheService:
                     selector = selector_info.get('selector')
 
                     if selector:
+                        # Skip overly-generic selectors
+                        if selector in generic_blacklist:
+                            logger.debug(f"Skipping generic selector {selector} for {domain}")
+                            continue
+
                         # If no filters or selector matches filter
                         if not filters or any(f in selector.lower() for f in filters):
                             logger.info(f"Using optimized selector for {domain}: {selector} (success_rate: {selector_info['success_rate']:.2%})")
