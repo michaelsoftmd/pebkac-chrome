@@ -331,3 +331,4 @@ This project is licensed with GNU Public V3
 Support me at:
 https://ko-fi.com/dredgesta
 www.akickintheteeth.com
+BTC: bc1qdl5q2qwupxnqgr6u8r3nvppvzr8k889f4k3j7n
