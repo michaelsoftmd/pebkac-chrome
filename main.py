@@ -307,8 +307,8 @@ async def compose_up():
             stderr=asyncio.subprocess.PIPE
         )
         
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=60)
-        
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=180)
+
         if proc.returncode == 0:
             return {
                 "status": "success",
@@ -321,11 +321,11 @@ async def compose_up():
                 "message": "Compose failed",
                 "error": stderr.decode('utf-8', errors='replace')
             }
-            
+
     except asyncio.TimeoutError:
         return {
             "status": "error",
-            "message": "Command timed out (60s)"
+            "message": "Command timed out (180s) - containers may still be starting in background"
         }
     except Exception as e:
         logger.error(f"Error starting compose: {e}")

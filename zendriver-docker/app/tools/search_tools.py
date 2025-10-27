@@ -24,6 +24,15 @@ class WebSearchTool(Tool):
     name = "web_search"
     description = """Search the web using search engines (DuckDuckGo, Google, etc). Returns dict with results array.
 
+Browser stays on search results page after this tool completes. WORKFLOW after searching:
+1. Visit relevant result URLs with visit_webpage(url) to extract their content
+2. Analyze which pages are valuable for the user to read (comprehensive reviews, detailed guides, etc)
+3. Open 1-3 most valuable pages in background tabs with open_background_tab(url) for user exploration
+4. Return to search results with navigate_browser(search_url) so user can see the full list
+
+Don't navigate back to search results between extraction and tab opening - complete the full workflow
+(extract → judge → open tabs → return to results) in sequence.
+
 IMPORTANT - Two Types of Search:
 1. Web search (this tool): Searches DuckDuckGo/Google/etc for results across the web
 2. Site search (not this tool): To search WITHIN a specific site, navigate to that site and use its own search box
@@ -32,15 +41,11 @@ If user asks to search within a site, navigate to it and find the search input d
 - Try 'input[type="search"]', 'input[name*="search"]', 'input[placeholder*="Search"]'
 - Inspect the page to discover the actual selector - don't hardcode or guess generic selectors
 
-AFTER SEARCHING:
-Analyze results, visit relevant pages to extract content. Optionally open 1-3 most valuable pages in background
-tabs for user exploration (not required for every search).
-
 ENGINES: duckduckgo (default), google, amazon, youtube, wikipedia, reddit, github, bing
 
 PAGINATION: web_search("query", load_more=True) for next page. Chain multiple calls for more results.
 
-RETURNS: Dict with 'query', 'engine', 'results' array (each result has title, url, domain)"""
+RETURNS: Dict with 'query', 'engine', 'results' array (title, url, domain), 'search_url' (to return to results)"""
     inputs = {
         "query": {"type": "string", "description": "Search query"},
         "engine": {
@@ -335,22 +340,14 @@ RETURNS: Dict with 'query', 'engine', 'results' array (each result has title, ur
                     result["domain"] = urlparse(result["url"]).netloc
                     unique_results.append(result)
 
-            # Navigate back to search results page to ensure main tab stays on results
-            # This allows user to reference results while exploring background tabs
-            if search_results_url:
-                logger.info(f"Returning to search results page: {search_results_url}")
-                self.client.post(
-                    f"{self.api_url}/navigate",
-                    json={"url": search_results_url}
-                )
-                time.sleep(1)  # Brief wait for page to load
-
             # Return Python dict - SmolAgents will handle stringification
-            # Note: No auto-opening of tabs - LLM decides which results to open based on relevance
+            # Browser stays on search results page after extraction
+            # LLM can navigate to result URLs or open background tabs as needed
             return {
                 "query": search_terms,
                 "engine": detected_site,
-                "results": unique_results[:max_results]
+                "results": unique_results[:max_results],
+                "search_url": search_results_url  # Include URL in case LLM wants to return to it
             }
 
         except Exception as e:

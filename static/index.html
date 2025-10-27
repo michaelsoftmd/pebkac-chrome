@@ -294,6 +294,9 @@
                 }
 
                 button.disabled = false;
+
+                // Verify actual system status after a brief delay
+                setTimeout(() => checkSystemStatus(), 6000);
             } else {
                 // Stopping system
                 if (!confirm('Stop all containers? (Data will be preserved)')) {
@@ -331,6 +334,9 @@
                 }
 
                 button.disabled = false;
+
+                // Verify actual system status after a brief delay
+                setTimeout(() => checkSystemStatus(), 6000);
             }
         }
 

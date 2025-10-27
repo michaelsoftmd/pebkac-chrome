@@ -1,6 +1,8 @@
 # pebkac: The AI-Powered Web Automaton Without The Automation
 
-Update: I've written a more detailed guide on setting up the pebkac environment. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
+Update: I've written a more detailed guide on setting up the pebkac environment. Not required, but helpful. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
+
+Update 2: This project is now on hold, and I am moving on to other, more exciting projects. Watch this space.
 
 ## **What This Is**
 
@@ -52,7 +54,7 @@ Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, pebkac
 
 This also means that pebkac is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API.
 
-Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome. (No longer correct, but pebkac is, and always will be, free and open-source)
+Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome.
 
 The browser runs with noVNC and loads about:blank on startup. You are warned. pebkac is not C-3P0. pebkac is a garden path. pebkac will click the wrong buttons. It will go off on tangents. It works independently through ten (adjustable) steps using its own logic and processes, providing entirely self-directed browsing. While pebkac is active you can check the highly detailed log output below the browser window to see what your LLM is up to.
 
@@ -74,6 +76,7 @@ This whole project is both an entirely useful web co-browsing service and a star
 It's also never been done before.
 
 It's also incredibly capable.
+
 
 ## ✨ Technicals
 
@@ -100,9 +103,11 @@ Here's what it does:
 - Validates inputs! I've done much to ensure there is little to no risk from Javascript or SQL injection. Please be careful. I made sure to do this based on an xkcd comic strip I saw in high school: https://m.xkcd.com/327/
 - A lot more. It is designed to turn your natural language input into results, and does its humble best.
 
+
 **Features Under Consideration:**
 - Voice assist (delayed due to hardware)
 - Vision assist
+- Live/Dynamic site data tracking
 
 
 This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
