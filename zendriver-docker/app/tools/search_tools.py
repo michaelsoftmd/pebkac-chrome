@@ -24,7 +24,17 @@ class WebSearchTool(Tool):
     name = "web_search"
     description = """Search the web using search engines (DuckDuckGo, Google, etc). Returns dict with results array.
 
-Browser stays on search results page after this tool completes. WORKFLOW after searching:
+USE CASES:
+- "search for X" - general web searches
+- "find information about Y" - discovery tasks
+- "search google/reddit/github for Z" - engine-specific searches
+
+NOT FOR:
+- Direct URL navigation (use navigate_browser instead)
+- Searching WITHIN a specific site (use navigate_browser + site's search box)
+  Example: "search abc.net.au for news" → use navigate_browser, not web_search
+
+Browser returns to search results page after this tool completes. WORKFLOW after searching:
 1. Visit relevant result URLs with visit_webpage(url) to extract their content
 2. Analyze which pages are valuable for the user to read (comprehensive reviews, detailed guides, etc)
 3. Open 1-3 most valuable pages in background tabs with open_background_tab(url) for user exploration
@@ -32,14 +42,6 @@ Browser stays on search results page after this tool completes. WORKFLOW after s
 
 Don't navigate back to search results between extraction and tab opening - complete the full workflow
 (extract → judge → open tabs → return to results) in sequence.
-
-IMPORTANT - Two Types of Search:
-1. Web search (this tool): Searches DuckDuckGo/Google/etc for results across the web
-2. Site search (not this tool): To search WITHIN a specific site, navigate to that site and use its own search box
-
-If user asks to search within a site, navigate to it and find the search input dynamically:
-- Try 'input[type="search"]', 'input[name*="search"]', 'input[placeholder*="Search"]'
-- Inspect the page to discover the actual selector - don't hardcode or guess generic selectors
 
 ENGINES: duckduckgo (default), google, amazon, youtube, wikipedia, reddit, github, bing
 

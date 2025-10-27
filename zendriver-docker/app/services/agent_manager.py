@@ -203,8 +203,21 @@ class AgentManager:
                 else:
                     formatted_result = f"Agent failed to complete task. Result: {str(result)[:200]}"
 
-            # Format dicts/lists as readable JSON
-            if isinstance(formatted_result, (dict, list)):
+            # Smart formatting: search results → markdown, other dicts → JSON
+            if isinstance(formatted_result, dict) and "results" in formatted_result and "query" in formatted_result:
+                # Auto-format search results as beautiful markdown
+                md = f"### Search: {formatted_result['query']}\n\n"
+                results = formatted_result['results']
+                for i, r in enumerate(results[:10], 1):  # Limit to 10 for display
+                    title = r.get('title', 'Untitled')
+                    url = r.get('url', '#')
+                    domain = r.get('domain', '')
+                    md += f"{i}. **[{title}]({url})** `{domain}`\n"
+                if len(results) > 10:
+                    md += f"\n*...and {len(results) - 10} more results*\n"
+                formatted_result = md
+            elif isinstance(formatted_result, (dict, list)):
+                # Other dicts/lists stay as JSON
                 formatted_result = json.dumps(formatted_result, indent=2, ensure_ascii=False)
             elif not isinstance(formatted_result, str):
                 formatted_result = str(formatted_result)

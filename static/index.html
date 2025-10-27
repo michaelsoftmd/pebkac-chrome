@@ -295,8 +295,8 @@
 
                 button.disabled = false;
 
-                // Verify actual system status after a brief delay
-                setTimeout(() => checkSystemStatus(), 6000);
+                // Verify actual system status after containers have time to start/stop
+                setTimeout(() => checkSystemStatus(), 10000);
             } else {
                 // Stopping system
                 if (!confirm('Stop all containers? (Data will be preserved)')) {
@@ -335,8 +335,8 @@
 
                 button.disabled = false;
 
-                // Verify actual system status after a brief delay
-                setTimeout(() => checkSystemStatus(), 6000);
+                // Verify actual system status after containers have time to start/stop
+                setTimeout(() => checkSystemStatus(), 10000);
             }
         }
 
@@ -643,19 +643,11 @@
                                 // While streaming, just accumulate - don't format yet
                                 messageElement.textContent = '< ' + assistantMessage;
                             } else if (json.type === 'done') {
-                                // Stream complete - now format based on content type
+                                // Stream complete - render as markdown
                                 if (messageElement && assistantMessage) {
-                                    if (isJSON(assistantMessage)) {
-                                        const formattedJSON = formatJSON(assistantMessage);
-                                        messageElement.textContent = '< ' + formattedJSON;
-                                        messageElement.classList.add('json-output');
-                                        messageElement.classList.remove('markdown-output');
-                                    } else {
-                                        const markdownContent = marked.parse(assistantMessage);
-                                        messageElement.innerHTML = '< ' + markdownContent;
-                                        messageElement.classList.add('markdown-output');
-                                        messageElement.classList.remove('json-output');
-                                    }
+                                    const markdownContent = marked.parse(assistantMessage);
+                                    messageElement.innerHTML = '< ' + markdownContent;
+                                    messageElement.classList.add('markdown-output');
                                 }
                                 break;
                             } else if (json.type === 'error') {
@@ -683,39 +675,6 @@
             }
         }
 
-        function isJSON(content) {
-            const trimmed = content.trim();
-            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-                try {
-                    JSON.parse(trimmed);
-                    return true;
-                } catch (e) {
-                    return false;
-                }
-            }
-            return false;
-        }
-
-        function formatJSON(content) {
-            // Try to detect and format JSON/dict content
-            const trimmed = content.trim();
-
-            // Check if content looks like JSON
-            if ((trimmed.startsWith('{') && trimmed.endsWith('}')) ||
-                (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    return JSON.stringify(parsed, null, 2);
-                } catch (e) {
-                    // Not valid JSON, return as-is
-                    return content;
-                }
-            }
-
-            return content;
-        }
-
         function addMessage(role, content, isError = false) {
             const messagesContainer = document.getElementById('chat-messages');
 
@@ -729,17 +688,10 @@
             const prefix = role === 'user' ? '> ' : '< ';
 
             if (role === 'assistant') {
-                // Check if content is JSON first
-                if (isJSON(content)) {
-                    const formattedJSON = formatJSON(content);
-                    messageDiv.textContent = prefix + formattedJSON;
-                    messageDiv.classList.add('json-output');
-                } else {
-                    // Render markdown for assistant messages
-                    const markdownContent = marked.parse(content);
-                    messageDiv.innerHTML = prefix + markdownContent;
-                    messageDiv.classList.add('markdown-output');
-                }
+                // All assistant messages rendered as markdown
+                const markdownContent = marked.parse(content);
+                messageDiv.innerHTML = prefix + markdownContent;
+                messageDiv.classList.add('markdown-output');
             } else {
                 // User messages stay plain text
                 messageDiv.textContent = prefix + content;
