@@ -6,7 +6,7 @@ Update 2: This project is now on hold, and I am moving on to other, more excitin
 
 ## **What This Is**
 
-pebkac browses the web for you. It is a web nonautomation framework powered by SmolAgents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double-helix of English language-powered Python interpretation driven by you, the user. There is no MCP, no n8n, no LangChain or LangGraph. pebkac employs the LLM's native ability to control a web browser by writing Python directly into it.
+pebkac browses the web for you. It is a web nonautomation framework powered by SmolAgents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double helix of English language-powered Python interpretation driven by you, the user. There is no MCP, no n8n, no LangChain or LangGraph. pebkac employs the LLM's native ability to control a web browser by writing Python directly into it.
 
 - Zendriver is described as "A blazing fast, async-first, undetectable webscraping/web automation framework based on ultrafunkamsterdam/nodriver."
 - SmolAgents is "a barebones library for agents that think in code."
@@ -52,7 +52,7 @@ Together, they fit to give your localised, secure, rambunctiously stupid LLM a m
 
 Unlike LangChain's rigid JSON tool-calling or MCP's predefined functions, pebkac's LLM writes actual Python code that executes browser actions. This means your AI will look at its own tools and write Python code to utilise them. This is impossible with LangChain/MCP's approach. They can only call predefined tools sequentially. pebkac's LLM can write loops, conditions, error handling, and complex logic.
 
-This also means that pebkac is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no-mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API.
+This also means that pebkac is only as capable as the LLM that runs it, and the prompts you give it! It is fundamentally of no mind. It has no real understanding of what it is asked to do. All it has is Google Chrome dev tools, a couple libraries, and an API.
 
 Frankly, no LLM has been made that **is supposed to** fully operate Google Chrome.
 
@@ -69,9 +69,9 @@ By reading the page, of course, same as you. State of the art extraction technol
 
 Basically, pebkac's vision is augmented. Not only is it excellent at text/data extraction (check it out on github: https://github.com/adbar/trafilatura) it utilises its extraction (along with native Zendriver CSS detection) to figure out what to do! This makes things like handling Cloudflare and popups a lot easier.
 
-YOU CAN ALSO interact with the Chrome browser pebkac uses. You can manually sign into websites and ask pebkac to perform actions on the page. Think of it like a co-browser. It can go off on its own, collect the day's news, find out about things, and (maybe) handle little jobs while you do other things, or you can drop in, hang-ten over the keyboard, and surf collaboratively. Remember, pebkac and its browser are fully contained, so there's no way the LLM can access your host PC.
+YOU CAN ALSO interact with the Chrome browser pebkac uses. You can manually sign into websites and ask pebkac to perform actions on the page. Think of it like a co-browser. It can go off on its own, collect the day's news, find out about things, and (maybe) handle little jobs while you do other things, or you can drop in, hang ten over the keyboard, and surf collaboratively. Remember, pebkac and its browser are fully contained, so there's no way the LLM can access your host PC.
 
-This whole project is both an entirely useful web co-browsing service and a stark artistic reminder of the realities of our modular, chronically-online based existences. We all exist in our little boxes with internet connections to view the outside world, and now more than ever our little boxes are subject to oversight and control by forces far more intelligent than us. I view this project as a black mirror (lol) to our modern life.
+This whole project is both an entirely useful web co-browsing service and a stark artistic reminder of the realities of our modular, chronically online existences. We all exist in our little boxes with internet connections to view the outside world, and now more than ever our little boxes are subject to oversight and control by forces far more intelligent than us. I view this project as a black mirror (lol) to our modern life.
 
 It's also never been done before.
 
@@ -110,7 +110,7 @@ Here's what it does:
 - Live/Dynamic site data tracking
 
 
-This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific fine-tuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
+This version of pebkac is designed to be mindful of context length and run on inexpensive GPUs. I built this whole project on a very budget MiniPC, and tested it with a specific finetuned model. For operating pebkac, I would HIGHLY recommend using David_AU's models, particularly the Brainstorm variants. Not only do they know to operate pebkac nearly 100% of the time, but they seem to have been trained on the SmolAgents library, making much of the 'thinking' already integrated.
 
 Search for and download them here: https://hf.tst.eu/model
 
