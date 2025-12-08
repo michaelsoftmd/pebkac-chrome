@@ -93,7 +93,7 @@ Here's what it does:
 - Interprets your commands with versatility. If you ask it to "search amazon", it'll go to Amazon and search. If you ask it to "wait 1min and reload", it will figure it out.
 - Coordinates its own tool use so it doesn't get confused. It won't extract before navigating, and knows what page it's already on.
 - Combines its usage of tools mid-step (with async). Remember how I said it has ten steps to complete a task? Inside each of those steps the LLM makes its own decisions about how to work.
-- Decides its own workflows. Aside from operating a browser search, its methods are decided on-the-fly.
+- Decides its own workflows. Aside from operating a browser search, its methods are decided on the fly.
 - Remembers its workflows after each run. All data is collected.
 - Navigates, types, searches, clicks, visits, extracts, takes screenshots, exports markdown, bypasses cloudflare, fills forms.
 - Tries, fails, and LEARNS. If one strategy fails, another might work.
