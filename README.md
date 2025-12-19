@@ -2,7 +2,7 @@
 
 Update: I've written a more detailed guide on setting up the pebkac environment. Not required, but helpful. It's on [Medium.](https://medium.com/ai-in-plain-english/building-your-own-secure-local-ai-web-co-browser-in-linux-mint-7bd2144fd64e)
 
-Update 2: This project is now on hold, and I am moving on to other, more exciting projects. Watch this space. Check out the release notes for more project info. Hoiya! Keep the fuck up. www.akickintheteeth.com
+Update 2: This project is now on hold, and I am moving on to other, more exciting projects. Watch this space. Check out the release notes for more project info.
 
 ## **What This Is**
 
