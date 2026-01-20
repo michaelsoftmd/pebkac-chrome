@@ -116,7 +116,7 @@ This version of pebkac is designed to be mindful of context length and run on in
 
 Search for and download them here: https://hf.tst.eu/model
 
-I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. His MoE models are excellent. Between non-thinking and thinking models, I like the results I get from non-thinking models.
+I did most testing using DavidAU/Qwen3-Jan-Nano-128k-6B-Brainstorm20x which was fast for my testing cases, but I would VERY MUCH RECOMMEND looking at the MoE models, like Qwen3-30b-whatever. His MoE models are excellent. Between thinking and non-thinking models, I like the results I get from non-thinking models.
 
 It is reasonably important to find a model with an extremely long context length, like 64k or higher.
 
