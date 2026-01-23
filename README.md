@@ -6,6 +6,8 @@ Update 2: This project is now on hold, and I am moving on to other, more excitin
 
 Update 3: https://www.youtube.com/watch?v=BVRAr1iQyQQ watch this one. I've been paying attention to Cory Doctorow since 2009.
 
+Update 4: New thing this week/next week idk
+
 ## **What This Is**
 
 pebkac browses the web for you. It is a web nonautomation framework powered by SmolAgents and Zendriver. Synchronous communication becomes asynchronous communication in an elegant double helix of English language-powered Python interpretation driven by you, the user. There is no MCP, no n8n, no LangChain or LangGraph. pebkac employs the LLM's native ability to control a web browser by writing Python directly into it.
