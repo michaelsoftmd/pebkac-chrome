@@ -6,7 +6,7 @@ Update 2: This project is now on hold, and I am moving on to other, more excitin
 
 Update 3: https://www.youtube.com/watch?v=BVRAr1iQyQQ watch this one. I've been paying attention to Cory Doctorow since 2009.
 
-Update 4: New thing this week/next week idk
+Update 4: New thing: https://akickintheteeth.com/ SLOP FIGHTER
 
 ## **What This Is**
 
